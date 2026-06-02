@@ -90,14 +90,8 @@
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     <span>Students</span>
                 </a>
-                <a href="#" class="nav-item" data-view="transactions" id="navTransactions">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    <span>Transactions</span>
-                </a>
-                <a href="#" class="nav-item" data-view="reports" id="navReports">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                    <span>Reports</span>
-                </a>
+                <!-- Transactions nav removed per request -->
+                <!-- Reports view removed per user request -->
             </nav>
 
             <div class="sidebar-footer">
@@ -253,9 +247,9 @@
                     <div class="content-card margin-top-xl">
                         <div class="card-header-flex">
                             <h3 class="card-title">Recent Transactions Log</h3>
-                            <a href="#" class="view-link text-cyan" id="linkToTransactions">Full Ledger</a>
+                            <span class="view-link text-cyan">Full Ledger</span>
                         </div>
-                        <div class="table-container">
+                        <div class="table-container students-scroll">
                             <table class="data-table">
                                 <thead>
                                     <tr>
@@ -305,16 +299,10 @@
                                     <input type="text" class="form-control" id="searchStudentInput" placeholder="Name or Index Number...">
                                 </div>
                             </div>
-                            <!-- Department -->
+                            <!-- Faculty Scope -->
                             <div class="form-group no-margin">
-                                <label class="control-label text-xs">Department</label>
-                                <select class="form-control select-dark" id="filterDeptSelect">
-                                    <option value="All">All Departments</option>
-                                    <option value="Technology">Technology</option>
-                                    <option value="Computing">Computing</option>
-                                    <option value="Applied Sciences">Applied Sciences</option>
-                                    <option value="Management">Management</option>
-                                </select>
+                                <label class="control-label text-xs">Faculty Scope</label>
+                                <input type="text" class="form-control" value="Technology Faculty Only" readonly>
                             </div>
                             <!-- Payment Status -->
                             <div class="form-group no-margin">
@@ -326,26 +314,13 @@
                                     <option value="Unpaid">Unpaid</option>
                                 </select>
                             </div>
-                            <!-- Bulk CSV Admin Action -->
-                            <div class="flex-align-end justify-end admin-only hidden">
-                                <label class="btn btn-glass cursor-pointer block-center" style="margin-bottom:0px; display:inline-flex; align-items:center; gap:8px;">
-                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                    <span>Import CSV</span>
-                                    <input type="file" id="csvFileInput" accept=".csv" class="hidden">
-                                </label>
-                            </div>
-
-                            <!-- Template import (visible) -->
-                            <div class="flex-align-end justify-end">
-                                <button class="btn btn-glass" id="btnImportTemplate" style="margin-left:0.5rem;">Import students from template</button>
-                            </div>
-                            <!-- PDF Template upload and actions -->
-                            <div class="flex-align-end justify-end margin-top-md">
-                                <input type="file" id="pdfTemplateInput" accept="application/pdf" style="display:none;" />
-                                <button class="btn btn-glass" id="btnUploadPdfTemplate">Upload PDF Template</button>
-                                <select class="form-control select-dark" id="studentsForPdf" style="margin-left:0.5rem; min-width:220px;"></select>
-                                <button class="btn btn-primary" id="btnFillPdfSingle" style="margin-left:0.5rem;">Fill PDF (Selected)</button>
-                                <button class="btn btn-glass" id="btnFillPdfBatch" style="margin-left:0.5rem;">Fill PDF (All)</button>
+                            <!-- Event Filter -->
+                            <div class="form-group no-margin">
+                                <label class="control-label text-xs">Event</label>
+                                <select class="form-control select-dark" id="filterEventSelect">
+                                    <option value="All">All Events</option>
+                                    <!-- Populated dynamically -->
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -365,6 +340,7 @@
                                 <thead>
                                     <tr>
                                         <th>Index Number</th>
+                                        <th>Reg. No</th>
                                         <th>Student Name</th>
                                         <th>Department</th>
                                         <th>Paid Amount</th>
@@ -455,63 +431,7 @@
                     </div>
                 </section>
 
-                <!-- REPORTS VIEW -->
-                <section class="view-panel hidden" id="viewReports">
-                    <!-- Stats Grid -->
-                    <div class="grid grid-3 gap-xl">
-                        <div class="metric-card bg-glass border-glow-cyan">
-                            <div class="metric-title text-muted text-xs">DEPARTMENT WITH HIGHEST PAID CONTRIBUTIONS</div>
-                            <div class="metric-value text-cyan margin-top-sm" id="reportTopDept">Technology</div>
-                            <div class="metric-trend text-xs text-muted margin-top-xs" id="reportTopDeptStat">Rs. 0 collected</div>
-                        </div>
-                        <div class="metric-card bg-glass border-glow-emerald">
-                            <div class="metric-title text-muted text-xs">AVERAGE COLLECTION PER ACTIVE STUDENT</div>
-                            <div class="metric-value text-emerald margin-top-sm" id="reportAvgContribution">Rs. 0.00</div>
-                            <div class="metric-trend text-xs text-muted margin-top-xs" id="reportAvgRate">Based on recorded list</div>
-                        </div>
-                        <div class="metric-card bg-glass border-glow-amber">
-                            <div class="metric-title text-muted text-xs">COLLECTIONS TARGET DEFICIT BALANCE</div>
-                            <div class="metric-value text-amber margin-top-sm" id="reportTotalDeficit">Rs. 0.00</div>
-                            <div class="metric-trend text-xs text-muted margin-top-xs">Towards global academic budget</div>
-                        </div>
-                    </div>
-
-                    <!-- Custom SVG Dynamic Bar Chart -->
-                    <div class="grid grid-2 gap-xl margin-top-xl">
-                        <div class="content-card">
-                            <h3 class="card-title">Collections by Department</h3>
-                            <div class="chart-wrapper margin-top-lg">
-                                <div class="bar-chart-container" id="deptBarChart">
-                                    <!-- Dynamic custom CSS SVG Bars injected via JS -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Event Contribution Analytics Table -->
-                        <div class="content-card">
-                            <h3 class="card-title">Event Share Breakdown Analysis</h3>
-                            <div class="table-container margin-top-lg">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Event Name</th>
-                                            <th>Total Target</th>
-                                            <th>Amount Raised</th>
-                                            <th>Rate</th>
-                                            <th>Ratio</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="reportEventBreakdown">
-                                        <!-- Dynamic breakdown logs -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-            </div>
-        </main>
+                <!-- Transactions view removed per user request -->
     </div>
 
     <!-- TOAST NOTIFICATION CONTAINER -->
@@ -573,7 +493,11 @@
                     <div class="result-header">
                         <div>
                             <h4 class="result-name" id="qStudentName">Kasun Perera</h4>
-                            <span class="result-meta" id="qStudentIndexDept">TEC2223001 • Department of Technology</span>
+                            <div>
+                                <span class="result-meta" id="qStudentIndexDept">TEC2223001 • Department of Technology</span>
+                                <br>
+                                <span class="result-meta" id="qStudentRegNo">Reg No: 2023-0000</span>
+                            </div>
                         </div>
                         <span class="badge" id="qStudentStatusBadge">Paid</span>
                     </div>
@@ -663,6 +587,53 @@
     </div>
 
     <!-- MODAL 4: NEW EVENT MODAL -->
+    <!-- MODAL X: EDIT STUDENT (ADMIN) -->
+    <div class="modal-overlay" id="modalEditStudent">
+        <div class="modal-content text-left" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Student Record</h3>
+                <button class="modal-close" id="btnCloseEditStudentModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editStudentForm">
+                    <div class="form-group">
+                        <label class="control-label">Index Number</label>
+                        <input type="text" id="editIndexNumber" class="form-control" readonly>
+                    </div>
+                    <div class="form-group margin-top-md">
+                        <label class="control-label">Registration No</label>
+                        <input type="text" id="editRegNo" class="form-control" readonly>
+                    </div>
+                    <div class="form-group margin-top-md">
+                        <label class="control-label">Student Name</label>
+                        <input type="text" id="editFullName" class="form-control" readonly>
+                    </div>
+                    <div class="form-group margin-top-md">
+                        <label class="control-label">Amount Paid (Rs.)</label>
+                        <input type="number" id="editAmountPaid" class="form-control" min="0" step="0.01">
+                    </div>
+                    <div class="form-group margin-top-md">
+                        <label class="control-label">Amount Owed (Rs.)</label>
+                        <input type="number" id="editAmountOwed" class="form-control" min="0" step="0.01">
+                    </div>
+                    <div class="form-group margin-top-md">
+                        <label class="control-label">Payment Status</label>
+                        <select id="editStatusSelect" class="form-control select-dark">
+                            <option value="Unpaid">Unpaid</option>
+                            <option value="Partially Paid">Partially Paid</option>
+                            <option value="Paid">Paid</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-2 gap-md margin-top-lg">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="button" class="btn btn-glass modal-close">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="modalNewEvent">
         <div class="modal-content text-left" style="max-width: 480px;">
             <div class="modal-header">
@@ -732,9 +703,36 @@
         </div>
     </div>
 
+    <!-- MODAL X: IMPORT FROM PDF -->
+    <div class="modal-overlay" id="modalImportPDF">
+        <div class="modal-content text-left" style="max-width:720px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Import Students from PDF (Table)</h3>
+                <button class="modal-close" id="btnCloseImportPDFModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-sm text-muted">Upload a PDF file containing a table of student records. The parser will attempt to extract Index Number, Registration No, Full Name and Department. Review the preview before inserting.</p>
+
+                <div class="form-group">
+                    <label class="control-label">Select PDF File</label>
+                    <input type="file" id="importPDFFileInput" accept="application/pdf" class="form-control">
+                </div>
+
+                <div id="importPDFStatus" class="text-sm text-muted margin-top-md">No file loaded.</div>
+
+                <div id="importPDFPreview" style="max-height:320px; overflow:auto; margin-top:12px;"></div>
+
+                <div class="grid grid-2 gap-md margin-top-lg">
+                    <button class="btn btn-primary" id="btnInsertParsedStudents">Insert Parsed Students</button>
+                    <button class="btn btn-glass modal-close">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- pdf.js library for client-side PDF parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <!-- Main Controller JS -->
-    <!-- PDF-lib for client-side PDF form filling -->
-    <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

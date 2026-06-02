@@ -196,24 +196,6 @@ h1, h2, h3, h4, h5, h6 {
     min-height: 100vh;
 }
 
-@media (max-width: 868px) {
-    .app-layout {
-        grid-template-columns: 1fr;
-    }
-    .sidebar {
-        position: fixed;
-        left: -260px;
-        top: 0;
-        bottom: 0;
-        z-index: 1000;
-        transition: var(--transition-smooth);
-    }
-    .sidebar.open {
-        left: 0;
-        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
-    }
-}
-
 /* SIDEBAR COMPONENT */
 .sidebar {
     background: rgba(6, 25, 34, 0.85); /* Slightly darker transparent dark-teal */
@@ -394,8 +376,47 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @media (max-width: 868px) {
+    .app-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .main-content {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: -260px;
+        top: 0;
+        bottom: 0;
+        width: 260px;
+        z-index: 1000;
+        transform: translateX(0);
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+    }
+
+    .sidebar.open {
+        left: 0;
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    }
+
     .sidebar-toggle {
         display: block;
+    }
+
+    .topbar-right {
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .topbar-right .btn {
+        padding: 0.5rem 0.85rem;
+    }
+
+    .topbar-right .btn span {
+        display: none;
     }
 }
 
@@ -842,6 +863,12 @@ h1, h2, h3, h4, h5, h6 {
 
 .data-table tbody tr:hover {
     background: rgba(255,255,255,0.015);
+}
+
+/* Constrain table height and enable vertical scrolling for large registries */
+.table-container.students-scroll {
+    max-height: 420px; /* adjust as needed */
+    overflow-y: auto;
 }
 
 /* PAGINATION styling */

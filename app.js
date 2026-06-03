@@ -15,7 +15,7 @@ let state = {
 // loader removed — no site loader initialization
 // Constant Predefined Roles & Verified University Domains
 const AUTHORIZED_ADMINS = [
-    { email: 'ENT2023070@tec.rjt.ac.lk', password: 'Spo3@tech', role: 'Treasurer', name: 'Salinda' },
+    { email: 'ENT2023070@tec.rjt.ac.lk', password: 'Sp03@tech', role: 'Treasurer', name: 'Salinda' },
     { email: 'itt2023097@tec.rjt.ac.lk', password: '200309700301.', role: 'Admin', name: 'Rasika' }
 ];
 const UNIVERSITY_DOMAIN = '@tec.rjt.ac.lk';
@@ -1535,7 +1535,7 @@ function handleLogin() {
     }
 
     // 2. Validate email and password matches
-    const verifiedAdmin = AUTHORIZED_ADMINS.find(admin => admin.email === email && admin.password === password);
+    const verifiedAdmin = AUTHORIZED_ADMINS.find(admin => admin.email.toLowerCase() === email && admin.password === password);
 
     if (verifiedAdmin) {
         // Authenticated

@@ -616,48 +616,43 @@ h6 {
     height: 24px;
 }
 
-@media (max-width: 868px) {
+@media (max-width: 991px) {
     .app-layout {
         grid-template-columns: 1fr;
     }
 
-    .main-content {
-        min-width: 0;
-        width: 100%;
-    }
-
     .sidebar {
         position: fixed;
-        left: -260px;
+        left: -280px;
         top: 0;
         bottom: 0;
-        width: 260px;
-        z-index: 1000;
+        width: 280px;
+        z-index: 2000;
         transform: translateX(0);
-        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+        transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
     }
 
     .sidebar.open {
         left: 0;
-        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+        box-shadow: 20px 0 60px rgba(0, 0, 0, 0.7);
     }
 
     .sidebar-toggle {
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .topbar-right {
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-    }
-
-    .topbar-right .btn {
-        padding: 0.5rem 0.85rem;
+    .topbar {
+        padding: 0 1rem;
     }
 
     .topbar-right .btn span {
         display: none;
+    }
+    
+    #loginBtnText, #themeToggleText {
+        display: none; /* Hide even these on tablet to keep topbar clean */
     }
 }
 
@@ -1864,39 +1859,15 @@ h6 {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: 8px;
+    margin-bottom: 0.5rem;
 }
 
 .data-table {
-    min-width: 700px; /* Ensure tables don't squash on mobile */
+    min-width: 750px; /* Force minimum width to enable scrolling instead of squishing */
 }
 
-/* Tablets & Small Laptops (Max 1024px) */
+/* Tablet Optimizations (Max 1024px) */
 @media (max-width: 1024px) {
-    .app-layout {
-        grid-template-columns: 1fr;
-    }
-
-    .sidebar {
-        position: fixed;
-        left: -280px;
-        z-index: 2000;
-        width: 280px;
-        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        box-shadow: 20px 0 50px rgba(0,0,0,0.5);
-    }
-
-    .sidebar.open {
-        transform: translateX(280px);
-    }
-
-    .topbar {
-        padding: 0 1rem;
-    }
-
-    .sidebar-toggle {
-        display: flex !important; /* Forces toggle to show */
-    }
-
     .grid-4, .grid-3 {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -1906,10 +1877,17 @@ h6 {
 @media (max-width: 768px) {
     .topbar {
         height: auto;
+        min-height: 64px;
         padding: 0.75rem 1rem;
-        flex-direction: column;
-        align-items: flex-start;
+        display: flex;
+        flex-wrap: wrap;
         gap: 0.75rem;
+        position: sticky;
+    }
+
+    .topbar-left {
+        width: 100%;
+        justify-content: space-between;
     }
 
     .topbar-right {
@@ -1919,25 +1897,33 @@ h6 {
         padding-bottom: 0.5rem;
         gap: 0.5rem;
         display: flex;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .topbar-right::-webkit-scrollbar {
+        display: none;
     }
 
     .topbar-right .btn {
         flex-shrink: 0;
-        padding: 0.5rem 0.75rem;
-        font-size: 0.75rem;
+        padding: 0.6rem 0.8rem;
     }
 
     .topbar-right .btn span {
-        display: none; /* Hide button text to save space on small mobiles */
+        display: none !important;
     }
     
     .topbar-right .btn svg {
         margin: 0;
+        width: 18px;
+        height: 18px;
     }
 
-    /* Exceptions for text that must stay */
-    #loginBtnText, #themeToggleText {
-        display: inline !important;
+    /* Max efficiency for icon-only mobile bar */
+    #btnLoginLogout #loginBtnText, 
+    #themeToggle #themeToggleText {
+        display: none !important;
     }
 
     .content-body {
@@ -1945,11 +1931,11 @@ h6 {
     }
 
     .metric-card {
-        padding: 1rem;
+        padding: 1.15rem;
     }
 
     .metric-value {
-        font-size: 1.25rem;
+        font-size: 1.35rem;
     }
 
     .card-header-flex {
@@ -1966,17 +1952,21 @@ h6 {
         flex-direction: column;
         align-items: center;
         gap: 2rem;
+        padding: 1rem 0;
     }
 
     .ring-legend {
         width: 100%;
-        grid-template-columns: 1fr;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
     }
 
     .modal-content {
-        width: 95% !important;
-        margin: 5% auto;
+        width: 94% !important;
         padding: 1.25rem;
+        margin: 0;
+        border-radius: 16px;
     }
 
     .gate-image-panel {
@@ -1990,6 +1980,16 @@ h6 {
     .gate-title {
         font-size: 1.25rem;
     }
+    
+    .pagination-container {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+    }
+    
+    .filter-card .grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Small Smart Phones (Max 480px) */
@@ -1998,19 +1998,39 @@ h6 {
         grid-template-columns: 1fr;
     }
 
-    .metric-card {
+    .metric-header {
         margin-bottom: 0.5rem;
     }
 
     .view-title {
-        font-size: 1.1rem;
+        font-size: 1.15rem;
     }
 
-    /* Monthly matrix khusus mobile */
+    /* Monthly matrix sticky behavior on very small screens */
     .monthly-matrix-table th:first-child, 
     .monthly-matrix-table td:first-child {
-        min-width: 140px;
+        min-width: 150px;
+        font-size: 0.8rem;
     }
+    
+    .logo-text {
+        font-size: 1.1rem;
+    }
+    
+    .logo-wrapper img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .ring-legend {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Custom spacing for small screens */
+@media (max-height: 700px) {
+    .sidebar-header { padding: 1rem; }
+    .sidebar-nav { padding: 1rem 0.75rem; }
 }
 
 /* Ensure images don't overflow */

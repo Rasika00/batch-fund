@@ -1,20 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RT Funds — Rajarata Technology 22/23</title>
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Official fund collection, tracking, and management system of the Rajarata University Technology faculty 22/23 batch. Premium tracking with strict security.">
-    <meta name="keywords" content="Rajarata, RT Funds, Technology 22/23, Fund Tracker, Student Payments, Sri Lanka University">
+    <meta name="description"
+        content="Official fund collection, tracking, and management system of the Rajarata University Technology faculty 22/23 batch. Premium tracking with strict security.">
+    <meta name="keywords"
+        content="Rajarata, RT Funds, Technology 22/23, Fund Tracker, Student Payments, Sri Lanka University">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <!-- Main Style Sheet -->
     <link rel="stylesheet" href="index.css">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="logo.png">
 </head>
+
 <body>
+
+    <!-- Premium Preloader -->
+    <div class="preloader" id="preloader">
+        <div class="preloader-content">
+            <video class="preloader-video" autoplay loop muted playsinline>
+                <source src="loading.mp4" type="video/mp4">
+            </video>
+            <h2 class="preloader-title">RT Funds</h2>
+            <p class="preloader-subtitle">Securing Faculty Financial Records...</p>
+            <div class="loader-bar-container">
+                <div class="loader-bar-fill"></div>
+            </div>
+        </div>
+    </div>
     <!-- Campus ID Verification Gate — Split Layout -->
     <div class="gate-overlay hidden gate-hidden" id="campusGate">
         <!-- LEFT: University Building Image Panel -->
@@ -29,29 +51,36 @@
         <div class="gate-form-panel">
             <div class="gate-card">
                 <div class="gate-header">
-                    <span class="gate-icon">RT</span>
+                    <img src="logo.png" alt="RT Logo" class="logo-img">
                     <div>
                         <div class="gate-university-label">Rajarata University of Sri Lanka</div>
                         <h2 class="gate-title">RT Funds Portal</h2>
                     </div>
                 </div>
 
-                <p class="gate-subtitle">Public visitors can view the dashboard immediately. Only the Treasurer and President can sign in to make changes.</p>
+                <p class="gate-subtitle">Public visitors can view the dashboard immediately. Only the Treasurer and
+                    President can sign in to make changes.</p>
 
                 <div class="gate-body">
                     <!-- Glowing error alert hidden by default -->
                     <div class="error-alert hidden" id="gateErrorAlert">
-                        <svg viewBox="0 0 24 24" class="alert-icon" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <svg viewBox="0 0 24 24" class="alert-icon" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
                         <span id="gateErrorText">Unauthorized Campus ID!</span>
                     </div>
 
                     <div class="form-group">
                         <label class="control-label text-xs">Campus Index Number or Email Address</label>
                         <div class="input-group">
-                            <input type="text" class="form-control" id="gateStudentIndex" placeholder="TEC2223001 or tec2223001@tec.rjt.ac.lk" autocomplete="off">
+                            <input type="text" class="form-control" id="gateStudentIndex"
+                                placeholder="TEC2223001 or tec2223001@tec.rjt.ac.lk" autocomplete="off">
                             <button class="btn btn-primary" id="btnVerifyGate">Verify &amp; Enter</button>
                         </div>
-                        <span class="input-helper">Legacy access form kept hidden for public view. Editing remains restricted to authorized staff.</span>
+                        <span class="input-helper">Legacy access form kept hidden for public view. Editing remains
+                            restricted to authorized staff.</span>
                     </div>
                 </div>
 
@@ -64,30 +93,49 @@
 
     <!-- App Container -->
     <div class="app-layout" id="appLayout">
-        
+
         <!-- Sidebar Navigation -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo-wrapper">
-                    <span class="logo-icon">RT</span>
+                    <img src="logo.png" alt="RT Logo" class="logo-img">
                     <div>
                         <h1 class="logo-text">RT Funds</h1>
                         <span class="badge badge-accent">Batch 22/23</span>
                     </div>
                 </div>
             </div>
-            
+
             <nav class="sidebar-nav">
                 <a href="#" class="nav-item active" data-view="dashboard" id="navDashboard">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="9" rx="1" />
+                        <rect x="14" y="3" width="7" height="5" rx="1" />
+                        <rect x="14" y="12" width="7" height="9" rx="1" />
+                        <rect x="3" y="16" width="7" height="5" rx="1" />
+                    </svg>
                     <span>Dashboard</span>
                 </a>
                 <a href="#" class="nav-item" data-view="events" id="navEvents">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M16 2v4M8 2v4M2 10h20"/></svg>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <path d="M16 2v4M8 2v4M2 10h20" />
+                    </svg>
                     <span>Events</span>
                 </a>
+                <a href="#" class="nav-item" data-view="monthly" id="navMonthly">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                    <span>Monthly Fund</span>
+                </a>
                 <a href="#" class="nav-item" data-view="students" id="navStudents">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
                     <span>Students</span>
                 </a>
                 <!-- Transactions nav removed per request -->
@@ -107,37 +155,58 @@
 
         <!-- Main Wrapper -->
         <main class="main-content">
-            
+
             <!-- Topbar Header -->
             <header class="topbar">
                 <div class="topbar-left">
                     <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="12" x2="21" y2="12" />
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <line x1="3" y1="18" x2="21" y2="18" />
+                        </svg>
                     </button>
                     <h2 class="view-title" id="currentViewTitle">Dashboard</h2>
                 </div>
-                
+
                 <div class="topbar-right">
                     <button class="btn btn-glass" id="btnStudentPortal">
-                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
                         <span>Check Student Status</span>
                     </button>
-                    
+
                     <button class="btn btn-primary admin-only hidden" id="btnQuickAddPayment">
-                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
                         <span>Add Payment</span>
                     </button>
 
                     <button class="btn btn-glow" id="btnLoginLogout">
-                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                            <polyline points="10 17 15 12 10 7" />
+                            <line x1="15" y1="12" x2="3" y2="12" />
+                        </svg>
                         <span id="loginBtnText">Sign in to Edit</span>
+                    </button>
+
+                    <button class="btn btn-glass" id="themeToggle" aria-label="Toggle Theme">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="4" />
+                        </svg>
+                        <span id="themeToggleText">Light</span>
                     </button>
                 </div>
             </header>
 
             <!-- Dynamic Views Container -->
             <div class="content-body">
-                
+
                 <!-- DASHBOARD VIEW -->
                 <section class="view-panel" id="viewDashboard">
                     <!-- Metrics Row -->
@@ -146,7 +215,10 @@
                             <div class="metric-header">
                                 <span class="metric-title">Total Funds Collected</span>
                                 <div class="metric-icon bg-emerald-soft text-emerald">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23" />
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                    </svg>
                                 </div>
                             </div>
                             <div class="metric-value text-emerald" id="statTotalFunds">Rs. 0.00</div>
@@ -157,7 +229,11 @@
                             <div class="metric-header">
                                 <span class="metric-title">Active Events</span>
                                 <div class="metric-icon bg-cyan-soft text-cyan">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M16 2v4M8 2v4M2 10h20"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path
+                                            d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                        <path d="M16 2v4M8 2v4M2 10h20" />
+                                    </svg>
                                 </div>
                             </div>
                             <div class="metric-value text-cyan" id="statActiveEvents">0</div>
@@ -168,7 +244,10 @@
                             <div class="metric-header">
                                 <span class="metric-title">Registered Students</span>
                                 <div class="metric-icon bg-indigo-soft text-indigo">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                        <circle cx="9" cy="7" r="4" />
+                                    </svg>
                                 </div>
                             </div>
                             <div class="metric-value text-indigo" id="statTotalStudents">0</div>
@@ -179,7 +258,11 @@
                             <div class="metric-header">
                                 <span class="metric-title">Overall Dues Pending</span>
                                 <div class="metric-icon bg-amber-soft text-amber">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="8" x2="12" y2="12" />
+                                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
                                 </div>
                             </div>
                             <div class="metric-value text-amber" id="statPendingDues">Rs. 0.00</div>
@@ -188,13 +271,14 @@
                     </div>
 
                     <!-- Ring Progress Section -->
-                    <div class="grid grid-3-2 gap-xl margin-top-xl">
+                    <div class="margin-top-xl">
                         <!-- Ring Card -->
                         <div class="content-card">
                             <div class="card-header-flex">
                                 <div>
                                     <h3 class="card-title">Selected Event Payment</h3>
-                                    <p class="section-subtitle" id="dashboardSelectedEventLabel">Select an event to view its payment totals</p>
+                                    <p class="section-subtitle" id="dashboardSelectedEventLabel">Select an event to view
+                                        its payment totals</p>
                                 </div>
                                 <div class="form-group no-margin" style="min-width: 220px;">
                                     <label class="control-label text-xs">Event</label>
@@ -205,7 +289,9 @@
                                 <div class="svg-ring-wrapper">
                                     <svg width="220" height="220" viewBox="0 0 220 220" class="progress-ring-svg">
                                         <circle class="ring-bg" cx="110" cy="110" r="90" stroke-width="12"></circle>
-                                        <circle class="ring-fill" cx="110" cy="110" r="90" stroke-width="12" id="dashboardProgressRing" stroke-dasharray="565.48" stroke-dashoffset="565.48"></circle>
+                                        <circle class="ring-fill" cx="110" cy="110" r="90" stroke-width="12"
+                                            id="dashboardProgressRing" stroke-dasharray="565.48"
+                                            stroke-dashoffset="565.48"></circle>
                                     </svg>
                                     <div class="ring-text-overlay">
                                         <span class="ring-percent" id="dashboardProgressPercent">0%</span>
@@ -230,43 +316,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Mini Event Progress List -->
-                        <div class="content-card">
-                            <div class="card-header-flex">
-                                <h3 class="card-title">Major Events Progress</h3>
-                                <a href="#" class="view-link text-cyan" id="linkToEvents">View All</a>
-                            </div>
-                            <div class="event-progress-list" id="dashboardEventProgress">
-                                <!-- Loaded dynamically via app.js -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Recent Transactions -->
-                    <div class="content-card margin-top-xl">
-                        <div class="card-header-flex">
-                            <h3 class="card-title">Recent Transactions Log</h3>
-                            <span class="view-link text-cyan">Full Ledger</span>
-                        </div>
-                        <div class="table-container students-scroll">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Student</th>
-                                        <th>Index</th>
-                                        <th>Target Event</th>
-                                        <th>Payment Method</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="dashboardRecentTransactions">
-                                    <!-- Loaded dynamically -->
-                                </tbody>
-                            </table>
-                        </div>
                     </div>
                 </section>
 
@@ -277,7 +326,11 @@
                             <p class="section-subtitle">Manage fund scopes and active milestones</p>
                         </div>
                         <button class="btn btn-primary admin-only hidden" id="btnAddNewEvent">
-                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
                             <span>New Event</span>
                         </button>
                     </div>
@@ -296,7 +349,8 @@
                             <div class="form-group no-margin">
                                 <label class="control-label text-xs">Search Student</label>
                                 <div class="input-wrapper">
-                                    <input type="text" class="form-control" id="searchStudentInput" placeholder="Name or Index Number...">
+                                    <input type="text" class="form-control" id="searchStudentInput"
+                                        placeholder="Name or Index Number...">
                                 </div>
                             </div>
                             <!-- Faculty Scope -->
@@ -329,12 +383,27 @@
                     <div class="content-card margin-top-lg">
                         <div class="card-header-flex margin-bottom-md">
                             <h3 class="card-title">Student Records Registry</h3>
-                            <button class="btn btn-glass" id="btnExportStudents">
-                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                                <span>Export Data</span>
-                            </button>
+                            <div class="flex-align-center gap-md">
+                                <button class="btn btn-primary admin-only hidden" id="btnOpenAddStudent">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19" />
+                                        <line x1="5" y1="12" x2="19" y2="12" />
+                                    </svg>
+                                    <span>Add Student</span>
+                                </button>
+                                <button class="btn btn-glass" id="btnExportStudents">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                                        <polyline points="16 6 12 2 8 6" />
+                                        <line x1="12" y1="2" x2="12" y2="15" />
+                                    </svg>
+                                    <span>Export Data</span>
+                                </button>
+                            </div>
                         </div>
-                        
+
                         <div class="table-container">
                             <table class="data-table">
                                 <thead>
@@ -342,9 +411,9 @@
                                         <th>Index Number</th>
                                         <th>Reg. No</th>
                                         <th>Student Name</th>
+                                        <th style="min-width: 120px;">Paid Amount</th>
+                                        <th style="min-width: 120px;">Total Owed</th>
                                         <th>Department</th>
-                                        <th>Paid Amount</th>
-                                        <th>Total Owed</th>
                                         <th>Status</th>
                                         <th class="admin-only hidden">Actions</th>
                                     </tr>
@@ -360,13 +429,66 @@
                             <span class="pagination-info" id="paginationInfo">Showing 1 to 10 of 45 students</span>
                             <div class="pagination-buttons">
                                 <button class="btn btn-arrow" id="btnPrevPage">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="15 18 9 12 15 6" />
+                                    </svg>
                                 </button>
                                 <span class="page-indicator" id="pageIndicator">Page 1 of 5</span>
                                 <button class="btn btn-arrow" id="btnNextPage">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="9 18 15 12 9 6" />
+                                    </svg>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- MONTHLY FUND VIEW -->
+                <section class="view-panel hidden" id="viewMonthly">
+                    <div class="filter-card">
+                        <div class="grid grid-4 gap-md">
+                            <div class="form-group no-margin">
+                                <label class="control-label text-xs">Search Student</label>
+                                <input type="text" class="form-control" id="searchMonthlyInput"
+                                    placeholder="Name or Index...">
+                            </div>
+                            <div class="form-group no-margin">
+                                <label class="control-label text-xs">Collection Year</label>
+                                <select class="form-control select-dark">
+                                    <option>2026</option>
+                                    <option>2025</option>
+                                </select>
+                            </div>
+                            <div class="form-group no-margin">
+                                <label class="control-label text-xs">Monthly Fee</label>
+                                <div class="badge badge-accent full-width"
+                                    style="height: 42px; font-size: 1rem; border-radius: 10px;">Rs. 100.00 / Month</div>
+                            </div>
+                            <div class="flex-align-end">
+                                <p class="text-xs text-muted">Click on a month cell to toggle payment status (Admin
+                                    Only).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-card margin-top-lg">
+                        <div class="card-header-flex margin-bottom-md">
+                            <h3 class="card-title">Monthly Subscription Matrix — Rs. 100/mo</h3>
+                        </div>
+
+                        <div class="table-container students-scroll">
+                            <table class="data-table monthly-matrix-table">
+                                <thead>
+                                    <tr id="monthlyHeaderRow">
+                                        <th>Student Details</th>
+                                        <!-- Months will be injected here -->
+                                    </tr>
+                                </thead>
+                                <tbody id="monthlyTableBody">
+                                    <!-- Dynamic matrix rows loaded here -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </section>
@@ -378,7 +500,8 @@
                         <div class="grid grid-3 gap-md">
                             <div class="form-group no-margin">
                                 <label class="control-label text-xs">Search Ledger</label>
-                                <input type="text" class="form-control" id="searchTransactionInput" placeholder="Name, Index, Event or ID...">
+                                <input type="text" class="form-control" id="searchTransactionInput"
+                                    placeholder="Name, Index, Event or ID...">
                             </div>
                             <div class="form-group no-margin">
                                 <label class="control-label text-xs">Payment Method</label>
@@ -391,7 +514,11 @@
                             </div>
                             <div class="flex-align-end justify-end admin-only hidden">
                                 <button class="btn btn-primary" id="btnCreateTransaction">
-                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19" />
+                                        <line x1="5" y1="12" x2="19" y2="12" />
+                                    </svg>
                                     <span>Record Payment</span>
                                 </button>
                             </div>
@@ -403,7 +530,12 @@
                         <div class="card-header-flex margin-bottom-md">
                             <h3 class="card-title">Full Ledger Transactions Audit</h3>
                             <button class="btn btn-glass" id="btnExportTransactions">
-                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                                    <polyline points="16 6 12 2 8 6" />
+                                    <line x1="12" y1="2" x2="12" y2="15" />
+                                </svg>
                                 <span>Export Ledger</span>
                             </button>
                         </div>
@@ -432,307 +564,437 @@
                 </section>
 
                 <!-- Transactions view removed per user request -->
-    </div>
-
-    <!-- TOAST NOTIFICATION CONTAINER -->
-    <div class="toast-container" id="toastContainer"></div>
-
-    <!-- MODAL 1: ADMIN LOGIN MODAL -->
-    <div class="modal-overlay" id="modalLogin">
-        <div class="modal-content text-left border-glow-cyan" style="max-width: 440px;">
-            <div class="modal-header">
-                <h3 class="modal-title text-cyan">Authorized Editor Access</h3>
-                <button class="modal-close" id="btnCloseLoginModal">&times;</button>
             </div>
-            <div class="modal-body">
-                <p class="text-sm text-muted margin-bottom-md">Viewers can browse the dashboard without logging in. Enter a verified university email and password only if you need to modify records.</p>
-                
-                <!-- Glowing error alert hidden by default -->
-                <div class="error-alert hidden" id="loginErrorAlert">
-                    <svg viewBox="0 0 24 24" class="alert-icon" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <span id="loginErrorText">Unauthorized email domain!</span>
-                </div>
 
-                <form id="adminLoginForm">
-                    <div class="form-group">
-                        <label class="control-label">University Email Address</label>
-                        <input type="email" class="form-control" id="loginEmail" placeholder="username@tec.rjt.ac.lk" required>
-                        <span class="input-helper">Must end strictly in <b>@tec.rjt.ac.lk</b></span>
+            <!-- TOAST NOTIFICATION CONTAINER -->
+            <div class="toast-container" id="toastContainer"></div>
+
+            <!-- MODAL 1: ADMIN LOGIN MODAL -->
+            <div class="modal-overlay" id="modalLogin">
+                <div class="modal-content text-left border-glow-cyan" style="max-width: 440px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title text-cyan">Authorized Editor Access</h3>
+                        <button class="modal-close" id="btnCloseLoginModal">&times;</button>
                     </div>
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Access Password</label>
-                        <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary full-width margin-top-lg" id="btnSubmitLogin">
-                        Authenticate & Unlock
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
+                    <div class="modal-body">
+                        <p class="text-sm text-muted margin-bottom-md">Viewers can browse the dashboard without logging
+                            in. Enter a verified university email and password only if you need to modify records.</p>
 
-    <!-- MODAL 2: STUDENT PORTAL (CHECK PAYMENT STATUS) -->
-    <div class="modal-overlay" id="modalStudentPortal">
-        <div class="modal-content text-left" style="max-width: 500px;">
-            <div class="modal-header border-bottom-cyan">
-                <h3 class="modal-title">Student Personal Dues Inspector</h3>
-                <button class="modal-close" id="btnCloseStudentModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p class="text-sm text-muted margin-bottom-md">Provide your batch-registered Student Index Number below to dynamically inspect all fund contributions, payment timelines, and outstanding balances.</p>
-                
-                <div class="form-group">
-                    <div class="input-group">
-                        <input type="text" class="form-control uppercase" id="studentSearchIndex" placeholder="E.g., TEC2223001">
-                        <button class="btn btn-primary" id="btnQueryStudentStatus">Check Status</button>
+                        <!-- Glowing error alert hidden by default -->
+                        <div class="error-alert hidden" id="loginErrorAlert">
+                            <svg viewBox="0 0 24 24" class="alert-icon" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <span id="loginErrorText">Unauthorized email domain!</span>
+                        </div>
+
+                        <form id="adminLoginForm">
+                            <div class="form-group">
+                                <label class="control-label">University Email Address</label>
+                                <input type="email" class="form-control" id="loginEmail"
+                                    placeholder="username@tec.rjt.ac.lk" required>
+                                <span class="input-helper">Must end strictly in <b>@tec.rjt.ac.lk</b></span>
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Access Password</label>
+                                <input type="password" class="form-control" id="loginPassword" placeholder="••••••••"
+                                    required>
+                            </div>
+                            <button type="submit" class="btn btn-primary full-width margin-top-lg" id="btnSubmitLogin">
+                                Authenticate & Unlock
+                            </button>
+                        </form>
                     </div>
                 </div>
+            </div>
 
-                <!-- Query Result Card (Hidden Initially) -->
-                <div class="student-result-card hidden margin-top-lg" id="studentQueryResult">
-                    <div class="result-header">
-                        <div>
-                            <h4 class="result-name" id="qStudentName">Kasun Perera</h4>
-                            <div>
-                                <span class="result-meta" id="qStudentIndexDept">TEC2223001 • Department of Technology</span>
-                                <br>
-                                <span class="result-meta" id="qStudentRegNo">Reg No: 2023-0000</span>
+            <!-- MODAL 2: STUDENT PORTAL (CHECK PAYMENT STATUS) -->
+            <div class="modal-overlay" id="modalStudentPortal">
+                <div class="modal-content text-left" style="max-width: 500px;">
+                    <div class="modal-header border-bottom-cyan">
+                        <h3 class="modal-title">Student Personal Dues Inspector</h3>
+                        <button class="modal-close" id="btnCloseStudentModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-sm text-muted margin-bottom-md">Provide your batch-registered Student Index
+                            Number below to dynamically inspect all fund contributions, payment timelines, and
+                            outstanding balances.</p>
+
+                        <div class="form-group">
+                            <div class="input-group">
+                                <input type="text" class="form-control uppercase" id="studentSearchIndex"
+                                    placeholder="E.g., TEC2223001">
+                                <button class="btn btn-primary" id="btnQueryStudentStatus">Check Status</button>
                             </div>
                         </div>
-                        <span class="badge" id="qStudentStatusBadge">Paid</span>
-                    </div>
-                    
-                    <div class="result-grid margin-top-md">
-                        <div class="res-item">
-                            <span class="res-lbl">Total Funds Paid</span>
-                            <span class="res-val text-emerald" id="qStudentPaid">Rs. 15,000</span>
+
+                        <!-- Query Result Card (Hidden Initially) -->
+                        <div class="student-result-card hidden margin-top-lg" id="studentQueryResult">
+                            <div class="result-header">
+                                <div>
+                                    <h4 class="result-name" id="qStudentName">Kasun Perera</h4>
+                                    <div>
+                                        <span class="result-meta" id="qStudentIndexDept">TEC2223001 • Department of
+                                            Technology</span>
+                                        <br>
+                                        <span class="result-meta" id="qStudentRegNo">Reg No: 2023-0000</span>
+                                    </div>
+                                </div>
+                                <span class="badge" id="qStudentStatusBadge">Paid</span>
+                            </div>
+
+                            <div class="result-grid margin-top-md">
+                                <div class="res-item">
+                                    <span class="res-lbl">Total Funds Paid</span>
+                                    <span class="res-val text-emerald" id="qStudentPaid">Rs. 15,000</span>
+                                </div>
+                                <div class="res-item">
+                                    <span class="res-lbl">Dues Outstanding</span>
+                                    <span class="res-val text-amber" id="qStudentOwed">Rs. 0</span>
+                                </div>
+                            </div>
+
+                            <div class="res-timeline-wrapper margin-top-lg">
+                                <span class="res-lbl">Transaction Timelines</span>
+                                <div class="res-timeline" id="qStudentTimeline">
+                                    <!-- Injected dynamically -->
+                                </div>
+                            </div>
+
+                            <div class="margin-top-lg text-right">
+                                <button class="btn btn-glass" id="btnRequestReceipt">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="16" y1="13" x2="8" y2="13" />
+                                        <line x1="16" y1="17" x2="8" y2="17" />
+                                        <polyline points="10 9 9 9 8 9" />
+                                    </svg>
+                                    <span>Download Receipt PDF</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="res-item">
-                            <span class="res-lbl">Dues Outstanding</span>
-                            <span class="res-val text-amber" id="qStudentOwed">Rs. 0</span>
+
+                        <!-- Empty result placeholder -->
+                        <div class="student-result-empty margin-top-lg" id="studentQueryEmpty">
+                            <svg viewBox="0 0 24 24" class="empty-icon" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                <line x1="8" y1="11" x2="14" y2="11" />
+                            </svg>
+                            <p class="text-sm">Please type a valid index number to fetch payment status records.</p>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="res-timeline-wrapper margin-top-lg">
-                        <span class="res-lbl">Transaction Timelines</span>
-                        <div class="res-timeline" id="qStudentTimeline">
-                            <!-- Injected dynamically -->
+            <!-- MODAL 3: ADD PAYMENT MODAL -->
+            <div class="modal-overlay" id="modalAddPayment">
+                <div class="modal-content text-left" style="max-width: 480px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Record Academic Contribution</h3>
+                        <button class="modal-close" id="btnCloseAddPaymentModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="paymentForm">
+                            <!-- Student Selector -->
+                            <div class="form-group">
+                                <label class="control-label">Search Student (Index or Name)</label>
+                                <input type="text" list="studentList" class="form-control" id="paymentStudentSelect"
+                                    placeholder="Type Index Number..." required>
+                                <datalist id="studentList">
+                                    <!-- Populated dynamically -->
+                                </datalist>
+                                <span class="input-helper">Start typing to quickly find a student.</span>
+                            </div>
+
+                            <!-- Target Event -->
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Target Milestones / Event Fund</label>
+                                <select class="form-control select-dark" id="paymentEventSelect" required>
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+
+                            <!-- Amount -->
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Payment Amount (Rs.)</label>
+                                <input type="number" class="form-control" id="paymentAmount" min="50"
+                                    placeholder="E.g., 5000" required>
+                            </div>
+
+                            <!-- Payment Method -->
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Payment Method</label>
+                                <select class="form-control select-dark" id="paymentMethodSelect" required>
+                                    <option value="Cash">Cash</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                    <option value="Slip Upload">Slip Upload</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary full-width margin-top-lg">
+                                Record & Audit Payment
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL X: ADD STUDENT (ADMIN) -->
+            <div class="modal-overlay" id="modalAddStudent">
+                <div class="modal-content text-left" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Manually Register Student</h3>
+                        <button class="modal-close" id="btnCloseAddStudentModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addStudentForm">
+                            <div class="grid grid-2 gap-md">
+                                <div class="form-group">
+                                    <label class="control-label">Index Number</label>
+                                    <input type="text" id="addIndexNumber" class="form-control" placeholder="TEC2223XXX"
+                                        required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="control-label">Registration No</label>
+                                    <input type="text" id="addRegNo" class="form-control" placeholder="2023-XXX"
+                                        required>
+                                </div>
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Full Name</label>
+                                <input type="text" id="addFullName" class="form-control" placeholder="Full legal name"
+                                    required>
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Department</label>
+                                <select id="addDepartment" class="form-control select-dark">
+                                    <option value="Department of Technology">Department of Technology</option>
+                                    <option value="Department of Engineering">Department of Engineering</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-2 gap-md margin-top-md">
+                                <div class="form-group">
+                                    <label class="control-label">Paid Amount (Rs.)</label>
+                                    <input type="number" id="addAmountPaid" class="form-control" value="0" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="control-label">Total Owed (Rs.)</label>
+                                    <input type="number" id="addAmountOwed" class="form-control" value="0" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Starting Payment Status</label>
+                                <select id="addStatusSelect" class="form-control select-dark">
+                                    <option value="Unpaid">Unpaid</option>
+                                    <option value="Partially Paid">Partially Paid</option>
+                                    <option value="Paid">Paid</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary full-width margin-top-lg">Create Student
+                                Record</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL 4: NEW EVENT MODAL -->
+            <!-- MODAL X: EDIT STUDENT (ADMIN) -->
+            <div class="modal-overlay" id="modalEditStudent">
+                <div class="modal-content text-left" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Edit Student Record</h3>
+                        <button class="modal-close" id="btnCloseEditStudentModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editStudentForm">
+                            <div class="form-group">
+                                <label class="control-label">Index Number</label>
+                                <input type="text" id="editIndexNumber" class="form-control" readonly>
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Registration No</label>
+                                <input type="text" id="editRegNo" class="form-control" readonly>
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Student Name</label>
+                                <input type="text" id="editFullName" class="form-control" readonly>
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Amount Paid (Rs.)</label>
+                                <input type="number" id="editAmountPaid" class="form-control" min="0" step="0.01">
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Amount Owed (Rs.)</label>
+                                <input type="number" id="editAmountOwed" class="form-control" min="0" step="0.01">
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Payment Status</label>
+                                <select id="editStatusSelect" class="form-control select-dark">
+                                    <option value="Unpaid">Unpaid</option>
+                                    <option value="Partially Paid">Partially Paid</option>
+                                    <option value="Paid">Paid</option>
+                                </select>
+                            </div>
+
+                            <div class="grid grid-2 gap-md margin-top-lg">
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                                <button type="button" class="btn btn-glass modal-close">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-overlay" id="modalNewEvent">
+                <div class="modal-content text-left" style="max-width: 480px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Configure New Milestone Event</h3>
+                        <button class="modal-close" id="btnCloseNewEventModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="eventForm">
+                            <div class="form-group">
+                                <label class="control-label">Event Milestone Title</label>
+                                <input type="text" class="form-control" id="eventTitle"
+                                    placeholder="E.g., Faculty Annual Tech Day 2026" required>
+                            </div>
+
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Target Fund Budget (Rs.)</label>
+                                <input type="number" class="form-control" id="eventTarget" min="100"
+                                    placeholder="E.g., 250000" required>
+                            </div>
+
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Collection Target Deadline</label>
+                                <input type="date" class="form-control" id="eventDeadline" required>
+                            </div>
+
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Event Visual Accent Stripe Color</label>
+                                <select class="form-control select-dark" id="eventColorSelect">
+                                    <option value="var(--cyan-glow)">Electric Cyan</option>
+                                    <option value="var(--emerald-glow)">Emerald Green</option>
+                                    <option value="var(--indigo-glow)">Vibrant Purple</option>
+                                    <option value="var(--amber-glow)">Warm Amber</option>
+                                    <option value="var(--rose-glow)">Crimson Rose</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary full-width margin-top-lg">
+                                Publish Milestone
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL 5: EXPORT MODAL -->
+            <div class="modal-overlay" id="modalExport">
+                <div class="modal-content text-left" style="max-width: 420px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Export Dynamic Datasets</h3>
+                        <button class="modal-close" id="btnCloseExportModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-sm text-muted margin-bottom-md">Select your preferred export layout. The system
+                            will compile all local changes and generate the download instantly.</p>
+
+                        <div class="grid grid-2 gap-md">
+                            <button class="btn btn-glass flex-column padding-lg" id="btnExportPDFAction">
+                                <svg viewBox="0 0 24 24" class="btn-big-icon text-rose" fill="none"
+                                    stroke="currentColor" stroke-width="1.5">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <line x1="16" y1="13" x2="8" y2="13" />
+                                    <line x1="16" y1="17" x2="8" y2="17" />
+                                </svg>
+                                <span class="margin-top-sm font-bold">PDF Format</span>
+                                <span class="text-xs text-muted">Audited Print Sheets</span>
+                            </button>
+
+                            <button class="btn btn-glass flex-column padding-lg" id="btnExportCSVAction">
+                                <svg viewBox="0 0 24 24" class="btn-big-icon text-emerald" fill="none"
+                                    stroke="currentColor" stroke-width="1.5">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="9" y1="3" x2="9" y2="21" />
+                                    <line x1="15" y1="3" x2="15" y2="21" />
+                                    <line x1="3" y1="9" x2="21" y2="9" />
+                                    <line x1="3" y1="15" x2="21" y2="15" />
+                                </svg>
+                                <span class="margin-top-sm font-bold">CSV Spreadsheet</span>
+                                <span class="text-xs text-muted">Excel & Sheets Compatible</span>
+                            </button>
                         </div>
                     </div>
-
-                    <div class="margin-top-lg text-right">
-                        <button class="btn btn-glass" id="btnRequestReceipt">
-                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                            <span>Download Receipt PDF</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Empty result placeholder -->
-                <div class="student-result-empty margin-top-lg" id="studentQueryEmpty">
-                    <svg viewBox="0 0 24 24" class="empty-icon" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                    <p class="text-sm">Please type a valid index number to fetch payment status records.</p>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- MODAL 3: ADD PAYMENT MODAL -->
-    <div class="modal-overlay" id="modalAddPayment">
-        <div class="modal-content text-left" style="max-width: 480px;">
-            <div class="modal-header">
-                <h3 class="modal-title">Record Academic Contribution</h3>
-                <button class="modal-close" id="btnCloseAddPaymentModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="paymentForm">
-                    <!-- Student Selector -->
-                    <div class="form-group">
-                        <label class="control-label">Select Registered Student</label>
-                        <select class="form-control select-dark" id="paymentStudentSelect" required>
-                            <!-- Populated dynamically -->
-                        </select>
+            <!-- MODAL X: IMPORT FROM PDF -->
+            <div class="modal-overlay" id="modalImportPDF">
+                <div class="modal-content text-left" style="max-width:720px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Import Students from PDF (Table)</h3>
+                        <button class="modal-close" id="btnCloseImportPDFModal">&times;</button>
                     </div>
+                    <div class="modal-body">
+                        <p class="text-sm text-muted">Upload a PDF file containing a table of student records. The
+                            parser will attempt to extract Index Number, Registration No, Full Name and Department.
+                            Review the preview before inserting.</p>
 
-                    <!-- Target Event -->
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Target Milestones / Event Fund</label>
-                        <select class="form-control select-dark" id="paymentEventSelect" required>
-                            <!-- Populated dynamically -->
-                        </select>
-                    </div>
+                        <div class="form-group">
+                            <label class="control-label">Select PDF File</label>
+                            <input type="file" id="importPDFFileInput" accept="application/pdf" class="form-control">
+                        </div>
 
-                    <!-- Amount -->
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Payment Amount (Rs.)</label>
-                        <input type="number" class="form-control" id="paymentAmount" min="50" placeholder="E.g., 5000" required>
-                    </div>
+                        <div id="importPDFStatus" class="text-sm text-muted margin-top-md">No file loaded.</div>
 
-                    <!-- Payment Method -->
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Payment Method</label>
-                        <select class="form-control select-dark" id="paymentMethodSelect" required>
-                            <option value="Cash">Cash</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Slip Upload">Slip Upload</option>
-                        </select>
-                    </div>
+                        <div id="importPDFPreview" style="max-height:320px; overflow:auto; margin-top:12px;"></div>
 
-                    <button type="submit" class="btn btn-primary full-width margin-top-lg">
-                        Record & Audit Payment
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 4: NEW EVENT MODAL -->
-    <!-- MODAL X: EDIT STUDENT (ADMIN) -->
-    <div class="modal-overlay" id="modalEditStudent">
-        <div class="modal-content text-left" style="max-width: 500px;">
-            <div class="modal-header">
-                <h3 class="modal-title">Edit Student Record</h3>
-                <button class="modal-close" id="btnCloseEditStudentModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="editStudentForm">
-                    <div class="form-group">
-                        <label class="control-label">Index Number</label>
-                        <input type="text" id="editIndexNumber" class="form-control" readonly>
+                        <div class="grid grid-2 gap-md margin-top-lg">
+                            <button class="btn btn-primary" id="btnInsertParsedStudents">Insert Parsed Students</button>
+                            <button class="btn btn-glass modal-close">Cancel</button>
+                        </div>
                     </div>
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Registration No</label>
-                        <input type="text" id="editRegNo" class="form-control" readonly>
-                    </div>
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Student Name</label>
-                        <input type="text" id="editFullName" class="form-control" readonly>
-                    </div>
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Amount Paid (Rs.)</label>
-                        <input type="number" id="editAmountPaid" class="form-control" min="0" step="0.01">
-                    </div>
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Amount Owed (Rs.)</label>
-                        <input type="number" id="editAmountOwed" class="form-control" min="0" step="0.01">
-                    </div>
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Payment Status</label>
-                        <select id="editStatusSelect" class="form-control select-dark">
-                            <option value="Unpaid">Unpaid</option>
-                            <option value="Partially Paid">Partially Paid</option>
-                            <option value="Paid">Paid</option>
-                        </select>
-                    </div>
-
-                    <div class="grid grid-2 gap-md margin-top-lg">
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                        <button type="button" class="btn btn-glass modal-close">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modalNewEvent">
-        <div class="modal-content text-left" style="max-width: 480px;">
-            <div class="modal-header">
-                <h3 class="modal-title">Configure New Milestone Event</h3>
-                <button class="modal-close" id="btnCloseNewEventModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="eventForm">
-                    <div class="form-group">
-                        <label class="control-label">Event Milestone Title</label>
-                        <input type="text" class="form-control" id="eventTitle" placeholder="E.g., Faculty Annual Tech Day 2026" required>
-                    </div>
-
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Target Fund Budget (Rs.)</label>
-                        <input type="number" class="form-control" id="eventTarget" min="100" placeholder="E.g., 250000" required>
-                    </div>
-
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Collection Target Deadline</label>
-                        <input type="date" class="form-control" id="eventDeadline" required>
-                    </div>
-
-                    <div class="form-group margin-top-md">
-                        <label class="control-label">Event Visual Accent Stripe Color</label>
-                        <select class="form-control select-dark" id="eventColorSelect">
-                            <option value="var(--cyan-glow)">Electric Cyan</option>
-                            <option value="var(--emerald-glow)">Emerald Green</option>
-                            <option value="var(--indigo-glow)">Vibrant Purple</option>
-                            <option value="var(--amber-glow)">Warm Amber</option>
-                            <option value="var(--rose-glow)">Crimson Rose</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary full-width margin-top-lg">
-                        Publish Milestone
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 5: EXPORT MODAL -->
-    <div class="modal-overlay" id="modalExport">
-        <div class="modal-content text-left" style="max-width: 420px;">
-            <div class="modal-header">
-                <h3 class="modal-title">Export Dynamic Datasets</h3>
-                <button class="modal-close" id="btnCloseExportModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p class="text-sm text-muted margin-bottom-md">Select your preferred export layout. The system will compile all local changes and generate the download instantly.</p>
-                
-                <div class="grid grid-2 gap-md">
-                    <button class="btn btn-glass flex-column padding-lg" id="btnExportPDFAction">
-                        <svg viewBox="0 0 24 24" class="btn-big-icon text-rose" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        <span class="margin-top-sm font-bold">PDF Format</span>
-                        <span class="text-xs text-muted">Audited Print Sheets</span>
-                    </button>
-                    
-                    <button class="btn btn-glass flex-column padding-lg" id="btnExportCSVAction">
-                        <svg viewBox="0 0 24 24" class="btn-big-icon text-emerald" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
-                        <span class="margin-top-sm font-bold">CSV Spreadsheet</span>
-                        <span class="text-xs text-muted">Excel & Sheets Compatible</span>
-                    </button>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- MODAL X: IMPORT FROM PDF -->
-    <div class="modal-overlay" id="modalImportPDF">
-        <div class="modal-content text-left" style="max-width:720px;">
-            <div class="modal-header">
-                <h3 class="modal-title">Import Students from PDF (Table)</h3>
-                <button class="modal-close" id="btnCloseImportPDFModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p class="text-sm text-muted">Upload a PDF file containing a table of student records. The parser will attempt to extract Index Number, Registration No, Full Name and Department. Review the preview before inserting.</p>
-
-                <div class="form-group">
-                    <label class="control-label">Select PDF File</label>
-                    <input type="file" id="importPDFFileInput" accept="application/pdf" class="form-control">
-                </div>
-
-                <div id="importPDFStatus" class="text-sm text-muted margin-top-md">No file loaded.</div>
-
-                <div id="importPDFPreview" style="max-height:320px; overflow:auto; margin-top:12px;"></div>
-
-                <div class="grid grid-2 gap-md margin-top-lg">
-                    <button class="btn btn-primary" id="btnInsertParsedStudents">Insert Parsed Students</button>
-                    <button class="btn btn-glass modal-close">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- pdf.js library for client-side PDF parsing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <!-- Main Controller JS -->
-    <script src="app.js"></script>
+            <!-- pdf.js library for client-side PDF parsing -->
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+            <!-- Theme toggle script (saves preference to localStorage) -->
+            <script>
+                (function () {
+                    const body = document.body;
+                    const toggle = document.getElementById('themeToggle');
+                    const label = document.getElementById('themeToggleText');
+                    const stored = localStorage.getItem('rtf_theme');
+                    const applyTheme = (mode) => {
+                        if (mode === 'light') {
+                            body.classList.add('theme-light');
+                            label.textContent = 'Light';
+                        } else {
+                            body.classList.remove('theme-light');
+                            label.textContent = 'Dark';
+                        }
+                    };
+                    applyTheme(stored === 'light' ? 'light' : 'dark');
+                    if (toggle) toggle.addEventListener('click', () => {
+                        const isLight = body.classList.toggle('theme-light');
+                        localStorage.setItem('rtf_theme', isLight ? 'light' : 'dark');
+                        label.textContent = isLight ? 'Light' : 'Dark';
+                    });
+                })();
+            </script>
+            <!-- Main Controller JS -->
+            <script src="app.js"></script>
 </body>
+
 </html>

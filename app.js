@@ -11,12 +11,17 @@ let state = {
     currentUser: null, // Stores { email: '', role: 'Treasurer' | 'President' } if authenticated
     dashboardEventId: null
 };
+
+// loader removed — no site loader initialization
 // Constant Predefined Roles & Verified University Domains
 const AUTHORIZED_ADMINS = [
     { email: 'ENT2023070@tec.rjt.ac.lk', password: 'Spo3@tech', role: 'Treasurer', name: 'Salinda' },
-    { email: 'itt2023097@tec.rjt.ac.lk', password: '200309700301.', role: '', name: 'Rasika' }
+    { email: 'itt2023097@tec.rjt.ac.lk', password: '200309700301.', role: 'Admin', name: 'Rasika' }
 ];
 const UNIVERSITY_DOMAIN = '@tec.rjt.ac.lk';
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHLY_FEE = 100;
 
 // Sample students inserted for Technology faculty. Payment fields are intentionally omitted;
 // only admins can add/modify `AmountPaid`, `AmountOwed`, and `Status`.
@@ -703,12 +708,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('campusGate').classList.add('gate-hidden');
+
+    // Dismiss Preloader
+    const preloader = document.getElementById('preloader');
+    if (preloader) {
+        // Minimum delay to show the beautiful animation
+        setTimeout(() => {
+            preloader.classList.add('fade-out');
+            // Remove from DOM after transition
+            setTimeout(() => {
+                preloader.remove();
+            }, 800);
+        }, 1500);
+    }
 });
 
 function initDatabase() {
-    state.students = [...MOCK_STUDENTS];
-    state.events = [...MOCK_EVENTS];
-    state.transactions = [...MOCK_TRANSACTIONS];
+    const storedStudents = localStorage.getItem('rt_students');
+    if (storedStudents) {
+        state.students = JSON.parse(storedStudents);
+    } else {
+        state.students = MOCK_STUDENTS.map(s => ({
+            ...s,
+            AmountPaid: 0,
+            AmountOwed: 0,
+            Status: 'Unpaid',
+            monthlyPayments: MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {})
+        }));
+    }
+    
+    // Safety check: ensure all students have the monthlyPayments object
+    state.students.forEach(s => {
+        if (!s.monthlyPayments) {
+            s.monthlyPayments = MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {});
+        }
+    });
+
+    const storedEvents = localStorage.getItem('rt_events');
+    state.events = storedEvents ? JSON.parse(storedEvents) : [...MOCK_EVENTS];
+
+    const storedTransactions = localStorage.getItem('rt_transactions');
+    state.transactions = storedTransactions ? JSON.parse(storedTransactions) : [...MOCK_TRANSACTIONS];
+
     saveToLocalStorage();
     filteredStudentsList = [...state.students];
 }
@@ -836,6 +877,13 @@ function initEventListeners() {
         });
     }
 
+    // Add Student Form (Admin)
+    const addStudentBtn = document.getElementById('btnOpenAddStudent');
+    if (addStudentBtn) addStudentBtn.addEventListener('click', () => openModal('modalAddStudent'));
+    
+    const addStudentForm = document.getElementById('addStudentForm');
+    if (addStudentForm) addStudentForm.addEventListener('submit', handleAddStudent);
+
     // Edit Student Form (Admin)
     const editForm = document.getElementById('editStudentForm');
     if (editForm) editForm.addEventListener('submit', handleEditStudent);
@@ -900,6 +948,9 @@ function initEventListeners() {
     if (searchTransactionInput) searchTransactionInput.addEventListener('input', () => { /* transactions view removed */ });
     const filterPaymentMethod = document.getElementById('filterPaymentMethod');
     if (filterPaymentMethod) filterPaymentMethod.addEventListener('change', () => { /* transactions view removed */ });
+
+    const searchMonthlyInput = document.getElementById('searchMonthlyInput');
+    if (searchMonthlyInput) searchMonthlyInput.addEventListener('input', renderMonthlyView);
 
     // Campus Gate Verification Listeners
     document.getElementById('btnVerifyGate').addEventListener('click', verifyCampusGate);
@@ -971,10 +1022,9 @@ function switchView(viewName) {
 function renderApp() {
     populateDashboardEventSelector();
     renderDashboardStats();
-    renderDashboardEventProgress();
-    renderDashboardRecentTransactions();
     renderEventsGrid();
     populateStudentEventSelector();
+    renderMonthlyView(); // New view
     
     // Set student filter defaults & render
     applyStudentFilters();
@@ -1037,6 +1087,16 @@ function getSelectedDashboardEvent() {
     return state.events.find(event => event.id === state.dashboardEventId) || state.events[0] || null;
 }
 
+// Security Helper: Check if user has edit permissions
+function isAuthorizedEditor() {
+    return state.currentUser && (['Treasurer', 'President', 'Admin'].includes(state.currentUser.role));
+}
+
+// Security Helper: Check if user is an ENT admin (allowed to delete events)
+function isEntAdmin() {
+    return state.currentUser && state.currentUser.email.toLowerCase().startsWith('ent');
+}
+
 function renderDashboardStats() {
     const selectedEvent = getSelectedDashboardEvent();
     const totalCollected = selectedEvent ? selectedEvent.collected : 0;
@@ -1083,64 +1143,7 @@ function renderDashboardStats() {
     document.getElementById('statCompletedEvents').innerText = `${state.events.filter(e => !e.active).length} Completed Events`;
 }
 
-function renderDashboardEventProgress() {
-    const listContainer = document.getElementById('dashboardEventProgress');
-    listContainer.innerHTML = '';
 
-    if (state.events.length === 0) {
-        listContainer.innerHTML = '<p class="text-sm text-muted">No active events configured.</p>';
-        return;
-    }
-
-    state.events.forEach(event => {
-        const pct = Math.round((event.collected / event.target) * 100);
-        
-        const eventEl = document.createElement('div');
-        eventEl.className = 'event-progress-item';
-        eventEl.innerHTML = `
-            <div class="event-progress-details">
-                <span class="event-progress-name">${event.title}</span>
-                <span class="event-progress-pct" style="color: ${event.color}">${pct}%</span>
-            </div>
-            <div class="progress-bar-track">
-                <div class="progress-bar-fill" style="width: ${pct}%; background-color: ${event.color}; box-shadow: 0 0 8px ${event.color}40;"></div>
-            </div>
-        `;
-        listContainer.appendChild(eventEl);
-    });
-}
-
-function renderDashboardRecentTransactions() {
-    const tbody = document.getElementById('dashboardRecentTransactions');
-    tbody.innerHTML = '';
-
-    const selectedEvent = getSelectedDashboardEvent();
-    const eventTransactions = selectedEvent
-        ? state.transactions.filter(txn => txn.eventName === selectedEvent.title)
-        : state.transactions;
-
-    // Take top 5 transactions sorted descending
-    const recent = [...eventTransactions].reverse().slice(0, 5);
-
-    if (recent.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-muted text-center">No transactions recorded yet.</td></tr>';
-        return;
-    }
-
-    recent.forEach(txn => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${txn.date}</td>
-            <td class="font-bold text-white">${txn.studentName}</td>
-            <td>${txn.studentIndex}</td>
-            <td>${txn.eventName}</td>
-            <td><span class="badge badge-accent">${txn.method}</span></td>
-            <td class="font-bold text-emerald">Rs. ${txn.amount.toLocaleString()}</td>
-            <td><span class="badge badge-paid">${txn.status}</span></td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
 
 // 2. EVENTS DASHBOARD GRID
 function renderEventsGrid() {
@@ -1157,7 +1160,16 @@ function renderEventsGrid() {
 
         const card = document.createElement('div');
         card.className = 'event-card';
+
+        // Only ENT Admins can see the delete button for events
+        const deleteBtn = isEntAdmin() 
+            ? `<button class="btn btn-glass btn-arrow text-rose" style="position:absolute; top:1rem; right:1rem; z-index:10;" onclick="deleteEvent('${event.id}')" title="Delete Event Data">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+               </button>`
+            : '';
+
         card.innerHTML = `
+            ${deleteBtn}
             <div class="event-card-stripe" style="background-color: ${event.color}; box-shadow: 0 0 10px ${event.color};"></div>
             <div class="event-card-body">
                 <h4 class="event-card-title">${event.title}</h4>
@@ -1189,6 +1201,51 @@ function renderEventsGrid() {
         container.appendChild(card);
     });
 }
+
+window.deleteEvent = function(eventId) {
+    if (!isEntAdmin()) {
+        showToast('Only ENT Admins are authorized to delete events!', 'error');
+        return;
+    }
+
+    const event = state.events.find(e => e.id === eventId);
+    if (!event) return;
+
+    if (confirm(`CRITICAL ACTION: Are you sure you want to PERMANENTLY DELETE "${event.title}"? \n\nThis will: \n1. Remove the event \n2. Void ALL payments associated with it \n3. Revert student balance records \n\nThis cannot be undone.`)) {
+        
+        // 1. Identify all transactions for this event
+        const txnsToVoid = state.transactions.filter(t => t.eventName === event.title);
+        
+        // 2. Revert student balances for each transaction
+        txnsToVoid.forEach(txn => {
+            const student = state.students.find(s => s.IndexNumber === txn.studentIndex);
+            if (student) {
+                student.AmountPaid = Math.max(0, (Number(student.AmountPaid) || 0) - (Number(txn.amount) || 0));
+                student.AmountOwed = (Number(student.AmountOwed) || 0) + (Number(txn.amount) || 0);
+                
+                // Recalculate status
+                if (student.AmountPaid === 0) student.Status = 'Unpaid';
+                else if (student.AmountOwed <= 0) student.Status = 'Paid';
+                else student.Status = 'Partially Paid';
+            }
+        });
+
+        // 3. Remove transactions from ledger
+        state.transactions = state.transactions.filter(t => t.eventName !== event.title);
+
+        // 4. Remove the event
+        state.events = state.events.filter(e => e.id !== eventId);
+
+        // 5. Update dashboard selection if it was the deleted event
+        if (state.dashboardEventId === eventId) {
+            state.dashboardEventId = state.events.length > 0 ? state.events[0].id : null;
+        }
+
+        saveToLocalStorage();
+        renderApp();
+        showToast(`Event "${event.title}" and its records deleted successfully.`, 'info');
+    }
+};
 
 // 3. STUDENT REGISTRY CONTROLLER
 function applyStudentFilters() {
@@ -1246,8 +1303,8 @@ function renderStudentsTable() {
         let statusBadgeClass = 'badge-unpaid';
         if (student.Status === 'Paid') statusBadgeClass = 'badge-paid';
         else if (student.Status === 'Partially Paid') statusBadgeClass = 'badge-pending';
-        // Set action columns only for authorized admin roles (Treasurer or President)
-        const isEditor = state.currentUser && (state.currentUser.role === 'Treasurer' || state.currentUser.role === 'President');
+        // Set action columns only for authorized admin roles (Treasurer, President, or Admin)
+        const isEditor = isAuthorizedEditor();
         const adminActionCol = isEditor 
             ? `<td class="admin-only">
                     <button class="btn btn-glass btn-arrow" onclick="quickAddPaymentForStudent('${student.IndexNumber}')" title="Record Payment">
@@ -1285,9 +1342,9 @@ function renderStudentsTable() {
             <td class="font-bold text-cyan">${student.IndexNumber}</td>
             <td class="font-bold text-muted">${student.RegNo || ''}</td>
             <td class="font-bold text-white">${student.FullName}</td>
-            <td>${student.Department}</td>
             ${paidCell}
             ${owedCell}
+            <td>${student.Department}</td>
             ${statusCell}
             ${adminActionCol}
         `;
@@ -1355,6 +1412,97 @@ function renderReportCharts() {
         `;
         tableBody.appendChild(tr);
     });
+}
+/* -------------------------------------------------------------
+ * MONTHLY FUND CONTROLLER
+ * ------------------------------------------------------------- */
+function renderMonthlyView() {
+    const tableBody = document.getElementById('monthlyTableBody');
+    const headerRow = document.getElementById('monthlyHeaderRow');
+    if (!tableBody || !headerRow) return;
+
+    // Build Header
+    headerRow.innerHTML = '<th style="text-align: left; position: sticky; left: 0; background: var(--bg-card); z-index: 11;">Student Details</th>';
+    MONTHS.forEach(month => {
+        const th = document.createElement('th');
+        th.innerText = month;
+        headerRow.appendChild(th);
+    });
+
+    // Filter students
+    const search = document.getElementById('searchMonthlyInput')?.value.toLowerCase() || '';
+    const filtered = state.students.filter(s => 
+        s.FullName.toLowerCase().includes(search) || 
+        s.IndexNumber.toLowerCase().includes(search)
+    );
+
+    tableBody.innerHTML = '';
+    filtered.forEach(student => {
+        const tr = document.createElement('tr');
+        
+        let html = `
+            <td style="text-align: left; position: sticky; left: 0; background: var(--bg-card); z-index: 10;">
+                <div class="font-bold text-white">${student.FullName}</div>
+                <div class="text-xs text-muted">${student.IndexNumber} • ${student.Department}</div>
+            </td>
+        `;
+
+        MONTHS.forEach(month => {
+            const isPaid = student.monthlyPayments[month];
+            html += `
+                <td class="month-cell" onclick="toggleMonthlyPayment('${student.IndexNumber}', '${month}')">
+                    <div class="month-status ${isPaid ? 'paid' : ''}"></div>
+                </td>
+            `;
+        });
+
+        tr.innerHTML = html;
+        tableBody.appendChild(tr);
+    });
+}
+
+function toggleMonthlyPayment(indexNumber, month) {
+    if (!state.currentUser) {
+        showToast('Only authorized admins can modify payment records!', 'error');
+        return;
+    }
+
+    const student = state.students.find(s => s.IndexNumber === indexNumber);
+    if (student) {
+        student.monthlyPayments[month] = !student.monthlyPayments[month];
+        
+        // Sync with transactions/stats if needed
+        const amount = student.monthlyPayments[month] ? MONTHLY_FEE : -MONTHLY_FEE;
+        
+        // Update summary student metrics (optional, if we want monthly to count towards total)
+        // For now, let's keep monthly separate or add to AmountPaid
+        student.AmountPaid += amount;
+        
+        // Record as transaction
+        if (student.monthlyPayments[month]) {
+            const txn = {
+                id: 'M-' + Date.now().toString().slice(-6),
+                date: new Date().toISOString().split('T')[0],
+                studentName: student.FullName,
+                studentIndex: student.IndexNumber,
+                eventName: `Monthly Fund (${month})`,
+                amount: MONTHLY_FEE,
+                method: 'Direct Toggle',
+                status: 'Paid'
+            };
+            state.transactions.push(txn);
+        } else {
+            // Remove the transaction if untoggled (search and destroy)
+            state.transactions = state.transactions.filter(t => 
+                !(t.studentIndex === student.IndexNumber && t.eventName === `Monthly Fund (${month})`)
+            );
+        }
+
+        saveToLocalStorage();
+        renderMonthlyView();
+        renderDashboardStats();
+        showToast(`${student.FullName} - ${month} marked as ${student.monthlyPayments[month] ? 'Paid' : 'Unpaid'}`, 'success');
+    }
 }
 
 /* -------------------------------------------------------------
@@ -1602,9 +1750,9 @@ function queryStudentStatus() {
 
 // QUICK LINK ADMIN ASSISTANCE
 window.quickAddPaymentForStudent = function(indexNumber) {
-    // Only allow quick payment flow for Treasurer or President
-    if (!state.currentUser || !(state.currentUser.role === 'Treasurer' || state.currentUser.role === 'President')) {
-        showToast('Only Treasurer or President can record payments.', 'error');
+    // Only allow quick payment flow for Treasurer, President, or Admin
+    if (!isAuthorizedEditor()) {
+        showToast('Only authorized administrators can record payments.', 'error');
         return;
     }
     populateSelectors();
@@ -1615,8 +1763,8 @@ window.quickAddPaymentForStudent = function(indexNumber) {
 // ADMIN: Open Edit Student modal and populate fields
 window.openEditStudent = function(indexNumber) {
     // Only authorized roles may edit student payment fields
-    if (!state.currentUser || !(state.currentUser.role === 'Treasurer' || state.currentUser.role === 'President')) {
-        showToast('Only Treasurer or President may edit student records.', 'error');
+    if (!isAuthorizedEditor()) {
+        showToast('Only authorized administrators may edit student records.', 'error');
         return;
     }
     const student = state.students.find(s => s.IndexNumber === indexNumber);
@@ -1635,6 +1783,48 @@ window.openEditStudent = function(indexNumber) {
     openModal('modalEditStudent');
 };
 
+// ADMIN: Handle manual student registration
+function handleAddStudent(e) {
+    e.preventDefault();
+    if (!isAuthorizedEditor()) {
+        showToast('Unauthorized access!', 'error');
+        return;
+    }
+
+    const indexNumber = document.getElementById('addIndexNumber').value.trim().toUpperCase();
+    const fullName = document.getElementById('addFullName').value.trim();
+    const regNo = document.getElementById('addRegNo').value.trim();
+    const dept = document.getElementById('addDepartment').value;
+    const paid = parseFloat(document.getElementById('addAmountPaid').value) || 0;
+    const owed = parseFloat(document.getElementById('addAmountOwed').value) || 0;
+    const status = document.getElementById('addStatusSelect').value;
+
+    if (state.students.some(s => s.IndexNumber === indexNumber)) {
+        showToast(`Student with Index ${indexNumber} already exists!`, 'warning');
+        return;
+    }
+
+    const newStudent = {
+        IndexNumber: indexNumber,
+        FullName: fullName,
+        RegNo: regNo,
+        Department: dept,
+        AmountPaid: paid,
+        AmountOwed: owed,
+        Status: status,
+        monthlyPayments: MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {})
+    };
+
+    state.students.push(newStudent);
+    saveToLocalStorage();
+    renderApp();
+    closeAllModals();
+    
+    // Clear form
+    e.target.reset();
+    showToast(`Registered ${fullName} successfully.`, 'success');
+}
+
 // ADMIN: Handle edit student form submit
 function handleEditStudent(e) {
     e.preventDefault();
@@ -1650,7 +1840,7 @@ function handleEditStudent(e) {
     }
 
     // Only authorized roles may persist payment changes
-    if (!state.currentUser || !(state.currentUser.role === 'Treasurer' || state.currentUser.role === 'President')) {
+    if (!isAuthorizedEditor()) {
         showToast('You are not authorized to update payment information.', 'error');
         return;
     }
@@ -1668,9 +1858,9 @@ function handleEditStudent(e) {
 
 // Inline update handler used by table inputs/selects
 window.inlineUpdateStudent = function(indexNumber, field, value) {
-    // Only Treasurer or President may update
-    if (!state.currentUser || !(state.currentUser.role === 'Treasurer' || state.currentUser.role === 'President')) {
-        showToast('Only Treasurer or President may update this field.', 'error');
+    // Only authorized admins may update
+    if (!isAuthorizedEditor()) {
+        showToast('Only authorized administrators may update this field.', 'error');
         // Optionally re-render to reset input
         renderStudentsTable();
         return;
@@ -1699,27 +1889,20 @@ window.inlineUpdateStudent = function(indexNumber, field, value) {
 
 // POPULATE DROPDOWNS SELECTORS
 function populateSelectors() {
-    const studentSelect = document.getElementById('paymentStudentSelect');
+    const studentList = document.getElementById('studentList');
     const eventSelect = document.getElementById('paymentEventSelect');
 
-    studentSelect.innerHTML = '';
-    eventSelect.innerHTML = '';
+    if (studentList) studentList.innerHTML = '';
+    if (eventSelect) eventSelect.innerHTML = '';
 
-    // Load registered students sorted by IndexNumber and display Index first for quick selection
+    // Load registered students sorted by IndexNumber
     const sortedStudents = [...state.students].sort((a,b) => a.IndexNumber.localeCompare(b.IndexNumber));
-    // Placeholder
-    const placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.innerText = 'Select student by Index Number';
-    placeholder.disabled = true;
-    placeholder.selected = true;
-    studentSelect.appendChild(placeholder);
 
     sortedStudents.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.IndexNumber;
         opt.innerText = `${s.IndexNumber} — ${s.FullName}`;
-        studentSelect.appendChild(opt);
+        if (studentList) studentList.appendChild(opt);
     });
 
     // Load active milestones events
@@ -1727,7 +1910,7 @@ function populateSelectors() {
         const opt = document.createElement('option');
         opt.value = e.id;
         opt.innerText = e.title;
-        eventSelect.appendChild(opt);
+        if (eventSelect) eventSelect.appendChild(opt);
     });
 }
 

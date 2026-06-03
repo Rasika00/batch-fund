@@ -693,6 +693,14 @@ let filteredStudentsList = [];
  * INITIALIZATION & STORAGE
  * ------------------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', () => {
+    // Universal Mobile Viewport Height (vh) Fix
+    const updateVH = () => {
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    updateVH();
+    window.addEventListener('resize', updateVH);
+
     initDatabase();
     initEventListeners();
     renderApp();

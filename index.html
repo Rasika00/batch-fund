@@ -138,6 +138,19 @@
                     </svg>
                     <span>Students</span>
                 </a>
+                <a href="#" class="nav-item" data-view="media" id="navMedia">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                        <polyline points="13 2 13 9 20 9" />
+                    </svg>
+                    <span>Media Gallary</span>
+                </a>
+                <a href="#" class="nav-item" data-view="comments" id="navComments">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span>Feedback & Comments</span>
+                </a>
                 <!-- Transactions nav removed per request -->
                 <!-- Reports view removed per user request -->
             </nav>
@@ -404,7 +417,7 @@
                             </div>
                         </div>
 
-                        <div class="table-container">
+                        <div class="table-container students-scroll">
                             <table class="data-table">
                                 <thead>
                                     <tr>
@@ -415,7 +428,6 @@
                                         <th style="min-width: 120px;">Total Owed</th>
                                         <th>Department</th>
                                         <th>Status</th>
-                                        <th class="admin-only hidden">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="studentsTableBody">
@@ -444,52 +456,75 @@
                     </div>
                 </section>
 
+                <!-- MEDIA GALLERY VIEW -->
+                <section class="view-panel hidden" id="viewMedia">
+                    <div class="card-header-flex margin-bottom-lg">
+                        <div>
+                            <p class="section-subtitle">Batch events archive, photos, and documents</p>
+                        </div>
+                        <button class="btn btn-primary admin-only hidden" id="btnOpenAddMedia">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span>Add Media</span>
+                        </button>
+                    </div>
+                    <div class="grid grid-3 gap-xl" id="mediaGrid">
+                        <!-- Media items dynamically loaded -->
+                    </div>
+                </section>
+
+                <!-- COMMENTS FEEDBACK VIEW -->
+                <section class="view-panel hidden" id="viewComments">
+                    <div class="card-header-flex margin-bottom-lg">
+                        <div>
+                            <p class="section-subtitle">What our students are saying</p>
+                        </div>
+                        <button class="btn btn-primary" id="btnOpenAddComment">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-13.5 8.38 8.38 0 0 1 3.8.9L21 3.5z" />
+                            </svg>
+                            <span>Leave a Comment</span>
+                        </button>
+                    </div>
+                    <div class="comment-feed" id="commentFeed">
+                        <!-- Comments dynamically loaded -->
+                    </div>
+                </section>
+
                 <!-- MONTHLY FUND VIEW -->
                 <section class="view-panel hidden" id="viewMonthly">
-                    <div class="filter-card">
-                        <div class="grid grid-4 gap-md">
+                    <div class="filter-card margin-bottom-lg">
+                        <div class="grid grid-2 gap-md">
                             <div class="form-group no-margin">
-                                <label class="control-label text-xs">Search Student</label>
-                                <input type="text" class="form-control" id="searchMonthlyInput"
-                                    placeholder="Name or Index...">
+                                <label class="control-label text-xs">Search Students</label>
+                                <input type="text" class="form-control" id="searchMonthlyInput" placeholder="Name or Index...">
                             </div>
-                            <div class="form-group no-margin">
-                                <label class="control-label text-xs">Collection Year</label>
-                                <select class="form-control select-dark">
-                                    <option>2026</option>
-                                    <option>2025</option>
-                                </select>
-                            </div>
-                            <div class="form-group no-margin">
-                                <label class="control-label text-xs">Monthly Fee</label>
-                                <div class="badge badge-accent full-width"
-                                    style="height: 42px; font-size: 1rem; border-radius: 10px;">Rs. 100.00 / Month</div>
-                            </div>
-                            <div class="flex-align-end">
-                                <p class="text-xs text-muted">Click on a month cell to toggle payment status (Admin
-                                    Only).</p>
+                            <div class="flex-align-center">
+                                <div class="monthly-info-box">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    </svg>
+                                    <p>Rs. 100 per month. Direct toggles require Administrator authentication.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="content-card margin-top-lg">
-                        <div class="card-header-flex margin-bottom-md">
-                            <h3 class="card-title">Monthly Subscription Matrix — Rs. 100/mo</h3>
-                        </div>
-
-                        <div class="table-container students-scroll">
-                            <table class="data-table monthly-matrix-table">
-                                <thead>
-                                    <tr id="monthlyHeaderRow">
-                                        <th>Student Details</th>
-                                        <!-- Months will be injected here -->
-                                    </tr>
-                                </thead>
-                                <tbody id="monthlyTableBody">
-                                    <!-- Dynamic matrix rows loaded here -->
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="table-container students-scroll">
+                        <table class="data-table monthly-table">
+                            <thead>
+                                <tr id="monthlyHeaderRow">
+                                    <th style="text-align: left; position: sticky; left: 0; background: var(--bg-card); z-index: 10;">Student Details</th>
+                                    <!-- Months loaded via JS -->
+                                </tr>
+                            </thead>
+                            <tbody id="monthlyTableBody">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
                     </div>
                 </section>
 
@@ -521,50 +556,40 @@
                                     </svg>
                                     <span>Record Payment</span>
                                 </button>
+                                <button class="btn btn-glass margin-left-md" id="btnExportTransactions">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                                        <polyline points="16 6 12 2 8 6" />
+                                        <line x1="12" y1="2" x2="12" y2="15" />
+                                    </svg>
+                                    <span>Export Ledger</span>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Transactions Ledger -->
-                    <div class="content-card margin-top-lg">
-                        <div class="card-header-flex margin-bottom-md">
-                            <h3 class="card-title">Full Ledger Transactions Audit</h3>
-                            <button class="btn btn-glass" id="btnExportTransactions">
-                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                                    <polyline points="16 6 12 2 8 6" />
-                                    <line x1="12" y1="2" x2="12" y2="15" />
-                                </svg>
-                                <span>Export Ledger</span>
-                            </button>
-                        </div>
-
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Transaction ID</th>
-                                        <th>Date</th>
-                                        <th>Student</th>
-                                        <th>Index</th>
-                                        <th>Event Name</th>
-                                        <th>Method</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                        <th class="admin-only hidden">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="transactionsTableBody">
-                                    <!-- Dynamic rows loaded here -->
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="table-container margin-top-lg">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Date</th>
+                                    <th>Student Details</th>
+                                    <th>Event</th>
+                                    <th>Method</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th class="admin-only hidden">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTableBody">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
                     </div>
                 </section>
 
-                <!-- Transactions view removed per user request -->
-            </div>
+                    
 
             <!-- TOAST NOTIFICATION CONTAINER -->
             <div class="toast-container" id="toastContainer"></div>
@@ -702,23 +727,20 @@
                     </div>
                     <div class="modal-body">
                         <form id="paymentForm">
-                            <!-- Student Selector -->
+                            <!-- Target Event First -->
                             <div class="form-group">
-                                <label class="control-label">Search Student (Index or Name)</label>
-                                <input type="text" list="studentList" class="form-control" id="paymentStudentSelect"
-                                    placeholder="Type Index Number..." required>
-                                <datalist id="studentList">
-                                    <!-- Populated dynamically -->
-                                </datalist>
-                                <span class="input-helper">Start typing to quickly find a student.</span>
-                            </div>
-
-                            <!-- Target Event -->
-                            <div class="form-group margin-top-md">
                                 <label class="control-label">Target Milestones / Event Fund</label>
                                 <select class="form-control select-dark" id="paymentEventSelect" required>
                                     <!-- Populated dynamically -->
                                 </select>
+                            </div>
+
+                            <!-- Student Index Number Only -->
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Student Index Number</label>
+                                <input type="text" class="form-control" id="paymentStudentSelect"
+                                    placeholder="E.g., TEC2223001" required>
+                                <span class="input-helper">Enter the student's index number to record payment.</span>
                             </div>
 
                             <!-- Amount -->
@@ -897,6 +919,50 @@
                 </div>
             </div>
 
+            <!-- MODAL: EDIT EVENT (ADMIN) -->
+            <div class="modal-overlay" id="modalEditEvent">
+                <div class="modal-content text-left" style="max-width: 480px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title text-cyan">Update Milestone Event</h3>
+                        <button class="modal-close" id="btnCloseEditEventModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editEventForm">
+                            <input type="hidden" id="editEventId">
+                            <div class="form-group">
+                                <label class="control-label">Event Title</label>
+                                <input type="text" class="form-control" id="editEventTitle" required>
+                            </div>
+
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Target Fund Budget (Rs.)</label>
+                                <input type="number" class="form-control" id="editEventTarget" min="100" required>
+                            </div>
+
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Collection Target Deadline</label>
+                                <input type="date" class="form-control" id="editEventDeadline" required>
+                            </div>
+
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Visual Accent Color</label>
+                                <select class="form-control select-dark" id="editEventColorSelect">
+                                    <option value="var(--cyan-glow)">Electric Cyan</option>
+                                    <option value="var(--emerald-glow)">Emerald Green</option>
+                                    <option value="var(--indigo-glow)">Vibrant Purple</option>
+                                    <option value="var(--amber-glow)">Warm Amber</option>
+                                    <option value="var(--rose-glow)">Crimson Rose</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary full-width margin-top-lg">
+                                Save Event Changes
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
             <!-- MODAL 5: EXPORT MODAL -->
             <div class="modal-overlay" id="modalExport">
                 <div class="modal-content text-left" style="max-width: 420px;">
@@ -963,6 +1029,97 @@
                             <button class="btn btn-primary" id="btnInsertParsedStudents">Insert Parsed Students</button>
                             <button class="btn btn-glass modal-close">Cancel</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL MEDIA: ADD MEDIA (ADMIN) -->
+            <div class="modal-overlay" id="modalAddMedia">
+                <div class="modal-content text-left" style="max-width: 480px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title text-cyan">Archive Batch Media</h3>
+                        <button class="modal-close" id="btnCloseAddMediaModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addMediaForm">
+                            <div class="form-group">
+                                <label class="control-label">Media Title</label>
+                                <input type="text" id="mediaTitle" class="form-control" placeholder="E.g., Batch Trip 2026" required>
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Select File (Photo/Video/Doc)</label>
+                                <input type="file" id="uploadMediaFile" class="form-control" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary full-width margin-top-lg">Upload to Portal</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL FEEDBACK: ADD COMMENT (EVERYONE) -->
+            <div class="modal-overlay" id="modalAddComment">
+                <div class="modal-content text-left" style="max-width: 480px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Student Open Feedback</h3>
+                        <button class="modal-close" id="btnCloseAddCommentModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-sm text-muted margin-bottom-md">Your thoughts help us improve batch management. Feel free to leave any comments or suggestions.</p>
+                        <form id="addCommentForm">
+                            <div class="form-group">
+                                <label class="control-label">Your Name or Index</label>
+                                <input type="text" id="commentAuthor" class="form-control" placeholder="Optional" value="Anonymous">
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Feedback / Comment</label>
+                                <textarea id="commentText" class="form-control" rows="4" placeholder="Write your message here..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary full-width margin-top-lg">Post Feedback</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL FEEDBACK: EDIT COMMENT (ADMIN) -->
+            <div class="modal-overlay" id="modalEditComment">
+                <div class="modal-content text-left" style="max-width: 480px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title text-cyan">Edit Student Feedback</h3>
+                        <button class="modal-close" id="btnCloseEditCommentModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editCommentForm">
+                            <input type="hidden" id="editCommentId">
+                            <div class="form-group">
+                                <label class="control-label">Author</label>
+                                <input type="text" id="editCommentAuthor" class="form-control" readonly>
+                            </div>
+                            <div class="form-group margin-top-md">
+                                <label class="control-label">Feedback / Comment Content</label>
+                                <textarea id="editCommentText" class="form-control" rows="4" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary full-width margin-top-lg">Update Feedback</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL MEDIA: EDIT MEDIA TITLE (ADMIN) -->
+            <div class="modal-overlay" id="modalEditMedia">
+                <div class="modal-content text-left" style="max-width: 480px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title text-cyan">Update Media Details</h3>
+                        <button class="modal-close" id="btnCloseEditMediaModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editMediaForm">
+                            <input type="hidden" id="editMediaId">
+                            <div class="form-group">
+                                <label class="control-label">Current Media Title</label>
+                                <input type="text" id="editMediaTitle" class="form-control" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary full-width margin-top-lg">Save Changes</button>
+                        </form>
                     </div>
                 </div>
             </div>

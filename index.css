@@ -322,6 +322,11 @@ h6 {
     align-items: flex-end;
 }
 
+.flex-align-center {
+    display: flex;
+    align-items: center;
+}
+
 .justify-end {
     justify-content: flex-end;
 }
@@ -428,6 +433,10 @@ h6 {
     min-height: 100vh;
 }
 
+.main-content {
+    grid-column: 2;
+}
+
 /* SIDEBAR COMPONENT */
 .sidebar {
     background: var(--bg-primary);
@@ -437,8 +446,11 @@ h6 {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    width: 260px;
+    z-index: 1000;
 }
 
 .sidebar-header {
@@ -619,6 +631,10 @@ h6 {
 @media (max-width: 991px) {
     .app-layout {
         grid-template-columns: 1fr;
+    }
+
+    .main-content {
+        grid-column: 1;
     }
 
     .sidebar {
@@ -1113,9 +1129,31 @@ h6 {
 
 /* Constrain table height and enable vertical scrolling for large registries */
 .table-container.students-scroll {
-    max-height: 420px;
-    /* adjust as needed */
+    max-height: 500px;
+    /* increased slightly for better view */
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--accent-rgb), 0.3) transparent;
+}
+
+.monthly-info-box {
+    font-size: 0.95rem;
+    color: var(--text-light);
+    background: rgba(var(--accent-rgb), 0.08);
+    padding: 0.8rem 1.2rem;
+    border-radius: 12px;
+    border: 1px solid rgba(var(--accent-rgb), 0.2);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    height: fit-content;
+    margin-bottom: auto;
+}
+
+.monthly-info-box p {
+    margin: 0;
+    line-height: 1.4;
+    font-weight: 500;
 }
 
 /* PAGINATION styling */
@@ -1461,6 +1499,22 @@ h6 {
 /* CONTENT BODY PADDING */
 .content-body {
     padding: 2rem;
+}
+
+.comment-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.col-span-3 {
+    grid-column: span 3;
+}
+
+.flex-header {
+    margin-bottom: 0.5rem;
 }
 
 /* TOAST SYSTEM */

@@ -8,6 +8,8 @@ let state = {
     students: [],
     events: [],
     transactions: [],
+    media: [],
+    comments: [],
     currentUser: null, // Stores { email: '', role: 'Treasurer' | 'President' } if authenticated
     dashboardEventId: null
 };
@@ -731,41 +733,172 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function initDatabase() {
-    const storedStudents = localStorage.getItem('rt_students');
-    if (storedStudents) {
-        state.students = JSON.parse(storedStudents);
+async function initDatabase() {
+    // Check if Supabase is configured
+    const useSupabase = window.SUPABASE_URL && !window.SUPABASE_URL.includes('YOUR_');
+
+    if (useSupabase) {
+        // Load from Supabase (Cloud Database)
+        await loadStudentsFromDB();
+        await loadEventsFromDB();
+        await loadTransactionsFromDB();
+        await loadMediaFromDB();
+        await loadCommentsFromDB();
     } else {
-        state.students = MOCK_STUDENTS.map(s => ({
-            ...s,
-            AmountPaid: 0,
-            AmountOwed: 0,
-            Status: 'Unpaid',
-            monthlyPayments: MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {})
-        }));
+        // Fallback to localStorage (for development without Supabase)
+        const storedStudents = localStorage.getItem('rt_students');
+        if (storedStudents) {
+            state.students = JSON.parse(storedStudents);
+        } else {
+            state.students = MOCK_STUDENTS.map(s => ({
+                ...s,
+                AmountPaid: 0,
+                AmountOwed: 0,
+                Status: 'Unpaid',
+                monthlyPayments: MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {})
+            }));
+        }
+        
+        state.students.forEach(s => {
+            if (!s.monthlyPayments) {
+                s.monthlyPayments = MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {});
+            }
+        });
+
+        const storedEvents = localStorage.getItem('rt_events');
+        state.events = storedEvents ? JSON.parse(storedEvents) : [...MOCK_EVENTS];
+
+        const storedTransactions = localStorage.getItem('rt_transactions');
+        state.transactions = storedTransactions ? JSON.parse(storedTransactions) : [...MOCK_TRANSACTIONS];
+
+        const storedMedia = localStorage.getItem('rt_media');
+        state.media = storedMedia ? JSON.parse(storedMedia) : [];
+
+        const storedComments = localStorage.getItem('rt_comments');
+        state.comments = storedComments ? JSON.parse(storedComments) : [];
+
+        saveToLocalStorage();
     }
     
-    // Safety check: ensure all students have the monthlyPayments object
-    state.students.forEach(s => {
-        if (!s.monthlyPayments) {
-            s.monthlyPayments = MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {});
-        }
-    });
-
-    const storedEvents = localStorage.getItem('rt_events');
-    state.events = storedEvents ? JSON.parse(storedEvents) : [...MOCK_EVENTS];
-
-    const storedTransactions = localStorage.getItem('rt_transactions');
-    state.transactions = storedTransactions ? JSON.parse(storedTransactions) : [...MOCK_TRANSACTIONS];
-
-    saveToLocalStorage();
     filteredStudentsList = [...state.students];
+    renderApp();
+}
+
+// =====================================================
+// SUPABASE DATABASE FUNCTIONS
+// =====================================================
+async function loadStudentsFromDB() {
+    const data = await db.getAll('students');
+    if (data && !data.error) {
+        state.students = data.map(s => ({
+            id: s.id,
+            IndexNumber: s.index_number,
+            FullName: s.full_name,
+            RegNo: s.reg_no,
+            Department: s.department,
+            AmountPaid: s.amount_paid || 0,
+            AmountOwed: s.amount_owed || 0,
+            Status: s.status || 'Unpaid',
+            monthlyPayments: s.monthly_payments || {}
+        }));
+    }
+}
+
+async function loadEventsFromDB() {
+    const data = await db.getAll('events');
+    if (data && !data.error) {
+        state.events = data.map(e => ({
+            id: e.id,
+            title: e.title,
+            target: e.target || 0,
+            collected: e.collected || 0,
+            deadline: e.deadline,
+            color: e.color,
+            active: e.active !== false
+        }));
+    }
+}
+
+async function loadTransactionsFromDB() {
+    const data = await db.getAll('transactions', { 'order': 'created_at.desc' });
+    if (data && !data.error) {
+        state.transactions = data;
+    }
+}
+
+async function loadMediaFromDB() {
+    const data = await db.getAll('media');
+    if (data && !data.error) {
+        state.media = data;
+    }
+}
+
+async function loadCommentsFromDB() {
+    const data = await db.getAll('comments');
+    if (data && !data.error) {
+        state.comments = data;
+    }
+}
+
+// Legacy functions for localStorage fallback
+async function loadStudents() {
+    const response = await fetch('/api/students');
+    if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+            state.students = data.map(s => ({
+                id: s.id,
+                IndexNumber: s.index_number,
+                FullName: s.full_name,
+                RegNo: s.reg_no,
+                Department: s.department,
+                AmountPaid: s.amount_paid,
+                AmountOwed: s.amount_owed,
+                Status: s.status,
+                monthlyPayments: s.monthly_payments ? JSON.parse(s.monthly_payments) : {}
+            }));
+            saveToLocalStorage();
+            filteredStudentsList = [...state.students];
+        }
+    }
+}
+
+async function loadEvents() {
+    const response = await fetch('/api/events');
+    if (response.ok) {
+        const data = await response.json();
+        if (data) {
+            state.events = data.map(e => ({
+                id: e.id,
+                title: e.title,
+                target: e.target,
+                collected: e.collected || 0,
+                deadline: e.deadline,
+                color: e.color,
+                active: true
+            }));
+            saveToLocalStorage();
+        }
+    }
+}
+
+async function loadTransactions() {
+    const response = await fetch('/api/transactions');
+    if (response.ok) {
+        const data = await response.json();
+        if (data) {
+            state.transactions = data;
+            saveToLocalStorage();
+        }
+    }
 }
 
 function saveToLocalStorage() {
     localStorage.setItem('rt_students', JSON.stringify(state.students));
     localStorage.setItem('rt_events', JSON.stringify(state.events));
     localStorage.setItem('rt_transactions', JSON.stringify(state.transactions));
+    localStorage.setItem('rt_media', JSON.stringify(state.media));
+    localStorage.setItem('rt_comments', JSON.stringify(state.comments));
 }
 
 /* -------------------------------------------------------------
@@ -969,6 +1102,34 @@ function initEventListeners() {
         e.preventDefault();
         openModal('modalLogin');
     });
+
+    // Media & Comments Trigger Modals
+    const btnOpenAddMedia = document.getElementById('btnOpenAddMedia');
+    if(btnOpenAddMedia) btnOpenAddMedia.addEventListener('click', () => openModal('modalAddMedia'));
+    
+    const btnOpenAddComment = document.getElementById('btnOpenAddComment');
+    if(btnOpenAddComment) btnOpenAddComment.addEventListener('click', () => openModal('modalAddComment'));
+
+    // Media & Comments Form Submits
+    const addMediaForm = document.getElementById('addMediaForm');
+    if(addMediaForm) addMediaForm.addEventListener('submit', handleAddMedia);
+
+    const addCommentForm = document.getElementById('addCommentForm');
+    if(addCommentForm) addCommentForm.addEventListener('submit', handleAddComment);
+
+    const editCommentForm = document.getElementById('editCommentForm');
+    if(editCommentForm) editCommentForm.addEventListener('submit', handleEditComment);
+
+    const editMediaForm = document.getElementById('editMediaForm');
+    if(editMediaForm) editMediaForm.addEventListener('submit', handleEditMedia);
+
+    const editEventForm = document.getElementById('editEventForm');
+    if(editEventForm) editEventForm.addEventListener('submit', handleEditEvent);
+
+    // Generic Close Buttons
+    document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', closeAllModals);
+    });
 }
 
 /* -------------------------------------------------------------
@@ -1022,6 +1183,226 @@ function switchView(viewName) {
     if (viewName === 'reports') {
         setTimeout(renderReportCharts, 100);
     }
+
+    // 7. Load Data for special views
+    if (viewName === 'media') loadMedia();
+    if (viewName === 'comments') loadComments();
+}
+
+async function loadMedia() {
+    // Try Supabase first
+    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+        await loadMediaFromDB();
+        saveToLocalStorage();
+        renderMediaGrid();
+        return;
+    }
+    
+    // Fallback to API
+    try {
+        const response = await fetch('/api/media');
+        if (response.ok) {
+            state.media = await response.json();
+            saveToLocalStorage();
+        }
+    } catch (err) { 
+        console.warn('API unavailable, loading media from local storage fallback.'); 
+    }
+    renderMediaGrid();
+}
+
+// Helper: Convert base64 data URL → Blob URL to avoid Chrome's data: URL block in new tabs
+window.openMediaBlob = function(dataUrl, mimeType) {
+    try {
+        // If it's already a regular URL (not base64), open directly
+        if (!dataUrl.startsWith('data:')) {
+            window.open(dataUrl, '_blank');
+            return;
+        }
+        // Split off the base64 payload
+        const base64 = dataUrl.split(',')[1];
+        if (!base64) { window.open(dataUrl, '_blank'); return; }
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: mimeType || 'application/octet-stream' });
+        const blobUrl = URL.createObjectURL(blob);
+        const tab = window.open(blobUrl, '_blank');
+        // Revoke the blob URL after 2 minutes to free memory
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+        if (!tab) showToast('Popup blocked! Please allow popups for this site.', 'warning');
+    } catch(err) {
+        console.warn('openMediaBlob failed:', err);
+        window.open(dataUrl, '_blank');
+    }
+};
+
+// Helper: Create a real downloadable link from a base64 data URL
+window.downloadMedia = function(dataUrl, filename, mimeType) {
+    try {
+        const link = document.createElement('a');
+        if (dataUrl.startsWith('data:')) {
+            // Convert to blob for reliable download
+            const base64 = dataUrl.split(',')[1];
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: mimeType || 'application/octet-stream' });
+            link.href = URL.createObjectURL(blob);
+            link.download = filename || 'download';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+        } else {
+            link.href = dataUrl;
+            link.download = filename || 'download';
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    } catch(err) {
+        console.warn('downloadMedia failed:', err);
+    }
+};
+
+function renderMediaGrid() {
+    const grid = document.getElementById('mediaGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (state.media.length === 0) {
+        grid.innerHTML = '<div class="content-card full-width text-center text-muted col-span-3">No media archived yet.</div>';
+        return;
+    }
+
+    state.media.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'event-card';
+
+        const mimeType = (item.mimetype || item.type || '').toLowerCase();
+        const mediaSrc = item.data || item.url || '';
+        const fileSizeMB = item.size ? (item.size / 1024 / 1024).toFixed(2) : '?';
+        const safeFilename = (item.filename || item.title || 'file').replace(/'/g, '');
+        const safeMime = mimeType.replace(/'/g, '');
+
+        let preview = '';
+        if (mimeType.startsWith('image/')) {
+            // Images: show inline, clicking opens via Blob URL (no black screen)
+            preview = `<div style="height:180px; overflow:hidden; cursor:pointer; position:relative;" onclick="openMediaBlob('${mediaSrc}','${safeMime}')">
+                        <img src="${mediaSrc}" style="width:100%; height:180px; object-fit:cover; border-radius:0; display:block;" alt="${item.title}">
+                        <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);border-radius:4px;padding:3px 6px;"><span style="font-size:10px;color:#fff;">🔍 View</span></div>
+                       </div>`;
+        } else if (mimeType.startsWith('video/')) {
+            // Videos: native player inline — works directly with base64 src
+            preview = `<video controls style="height:180px; width:100%; object-fit:cover; border-radius:0; display:block; background:#000;">
+                        <source src="${mediaSrc}" type="${mimeType}">
+                        Your browser does not support video playback.
+                       </video>`;
+        } else if (mimeType === 'application/pdf') {
+            // PDFs: icon + click to open via Blob URL
+            preview = `<div style="height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; gap:0.5rem; background:rgba(231,76,60,0.08); border-radius:0;" onclick="openMediaBlob('${mediaSrc}','${safeMime}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#e74c3c" stroke-width="2" style="width:52px;height:52px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        <span style="font-size:11px;color:#e74c3c;font-weight:700;">PDF Document</span>
+                        <span style="font-size:10px;color:var(--text-muted);">Click to open in viewer</span>
+                       </div>`;
+        } else {
+            const typeLabel = mimeType ? (mimeType.split('/')[1] || mimeType).toUpperCase() : 'FILE';
+            preview = `<div style="height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; gap:0.5rem; background:rgba(0,242,254,0.05); border-radius:0;" onclick="openMediaBlob('${mediaSrc}','${safeMime}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:48px;height:48px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span style="font-size:11px;">${typeLabel}</span>
+                        <span style="font-size:10px;color:var(--text-muted);">Click to open</span>
+                       </div>`;
+        }
+
+        div.innerHTML = `
+            ${preview}
+            <div class="event-card-body">
+                <h4 class="event-card-title">${item.title}</h4>
+                <div class="event-card-meta">
+                    <span>${fileSizeMB} MB</span>
+                    <div class="flex-align-center gap-sm">
+                        <button class="btn btn-glass btn-arrow" title="Open" onclick="openMediaBlob('${mediaSrc}','${safeMime}')" style="margin-right:2px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        </button>
+                        <button class="btn btn-glass btn-arrow" title="Download" onclick="downloadMedia('${mediaSrc}','${safeFilename}','${safeMime}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </button>
+                        ${state.currentUser ? `
+                            <button class="btn btn-glass btn-sm" onclick="openEditMediaModal('${item.id}')" title="Edit Title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                            <button class="btn btn-glass btn-sm text-rose" onclick="handleDeleteMedia('${item.id}')" title="Delete Media">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        grid.appendChild(div);
+    });
+}
+
+async function loadComments() {
+    try {
+        const response = await fetch('/api/comments');
+        if (response.ok) {
+            state.comments = await response.json();
+            saveToLocalStorage();
+        }
+    } catch (err) { 
+        console.warn('API unavailable, loading comments from local storage fallback.'); 
+    }
+    renderCommentFeed();
+}
+
+function renderCommentFeed() {
+    const feed = document.getElementById('commentFeed');
+    if (!feed) return;
+    feed.innerHTML = '';
+
+    if (state.comments.length === 0) {
+        feed.innerHTML = '<div class="content-card text-center text-muted">Be the first to say something!</div>';
+        return;
+    }
+
+    state.comments.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'content-card margin-bottom-md';
+        
+        let adminButtons = '';
+        if (state.currentUser) {
+            adminButtons = `
+                <div class="flex-align-center gap-sm">
+                    <button class="btn btn-glass btn-sm" onclick="openEditCommentModal('${c.id}')" title="Edit Comment">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="btn btn-glass btn-sm text-rose" onclick="handleDeleteComment('${c.id}')" title="Delete Comment">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            `;
+        }
+
+        div.innerHTML = `
+            <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                <div class="profile-avatar">${(c.author || 'A')[0].toUpperCase()}</div>
+                <div style="flex: 1;">
+                    <div class="flex-header" style="display: flex; justify-content: space-between;">
+                        <h4 class="text-white" style="font-size: 0.9rem;">${c.author || 'Anonymous Student'}</h4>
+                        <div class="flex-align-center gap-md">
+                            <span class="text-xs text-muted">${new Date(c.created_at).toLocaleDateString()}</span>
+                            ${adminButtons}
+                        </div>
+                    </div>
+                    <p class="text-sm margin-top-sm" style="line-height: 1.6; color: var(--text-light);">${c.comment}</p>
+                </div>
+            </div>
+        `;
+        feed.appendChild(div);
+    });
 }
 
 /* -------------------------------------------------------------
@@ -1034,9 +1415,13 @@ function renderApp() {
     populateStudentEventSelector();
     renderMonthlyView(); // New view
     
+    // Refresh media and comments if we are on those views
+    const activeView = document.querySelector('.nav-item.active')?.getAttribute('data-view');
+    if(activeView === 'media') loadMedia();
+    if(activeView === 'comments') loadComments();
+
     // Set student filter defaults & render
     applyStudentFilters();
-    // Transactions view removed; full ledger rendering disabled here.
 }
 
 // Populate Event selector shown on Students view filters
@@ -1169,15 +1554,21 @@ function renderEventsGrid() {
         const card = document.createElement('div');
         card.className = 'event-card';
 
-        // Only ENT Admins can see the delete button for events
-        const deleteBtn = isEntAdmin() 
-            ? `<button class="btn btn-glass btn-arrow text-rose" style="position:absolute; top:1rem; right:1rem; z-index:10;" onclick="deleteEvent('${event.id}')" title="Delete Event Data">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-               </button>`
+        // Admins can edit, only ENT Admins can delete
+        const adminControls = isAuthorizedEditor() 
+            ? `<div style="position:absolute; top:1rem; right:1rem; z-index:10; display:flex; gap:0.5rem;">
+                  <button class="btn btn-glass btn-sm" onclick="openEditEventModal('${event.id}')" title="Edit Event">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  ${isEntAdmin() ? `
+                  <button class="btn btn-glass btn-sm text-rose" onclick="deleteEvent('${event.id}')" title="Delete Event Data">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                  </button>` : ''}
+               </div>`
             : '';
 
         card.innerHTML = `
-            ${deleteBtn}
+            ${adminControls}
             <div class="event-card-stripe" style="background-color: ${event.color}; box-shadow: 0 0 10px ${event.color};"></div>
             <div class="event-card-body">
                 <h4 class="event-card-title">${event.title}</h4>
@@ -1196,7 +1587,7 @@ function renderEventsGrid() {
                 </div>
                 <div class="event-card-grid-metrics">
                     <div>
-                        <span class="event-metric-lbl">Target Target</span>
+                        <span class="event-metric-lbl">Target Budget</span>
                         <div class="event-metric-val">Rs. ${event.target.toLocaleString()}</div>
                     </div>
                     <div>
@@ -1210,17 +1601,29 @@ function renderEventsGrid() {
     });
 }
 
-window.deleteEvent = function(eventId) {
+window.deleteEvent = async function(eventId) {
     if (!isEntAdmin()) {
         showToast('Only ENT Admins are authorized to delete events!', 'error');
         return;
     }
 
-    const event = state.events.find(e => e.id === eventId);
+    const event = state.events.find(e => e.id == eventId);
     if (!event) return;
 
     if (confirm(`CRITICAL ACTION: Are you sure you want to PERMANENTLY DELETE "${event.title}"? \n\nThis will: \n1. Remove the event \n2. Void ALL payments associated with it \n3. Revert student balance records \n\nThis cannot be undone.`)) {
         
+        try {
+            const response = await fetch(`/api/events/${eventId}`, { method: 'DELETE' });
+            if (response.ok) {
+                showToast(`Event "${event.title}" deleted and balances reverted.`, 'info');
+                // Refresh data from server
+                initDatabase(); // This fetches fresh data if using API
+                renderApp();
+                return;
+            }
+        } catch (err) {}
+
+        // Fallback: Local logic
         // 1. Identify all transactions for this event
         const txnsToVoid = state.transactions.filter(t => t.eventName === event.title);
         
@@ -1231,7 +1634,6 @@ window.deleteEvent = function(eventId) {
                 student.AmountPaid = Math.max(0, (Number(student.AmountPaid) || 0) - (Number(txn.amount) || 0));
                 student.AmountOwed = (Number(student.AmountOwed) || 0) + (Number(txn.amount) || 0);
                 
-                // Recalculate status
                 if (student.AmountPaid === 0) student.Status = 'Unpaid';
                 else if (student.AmountOwed <= 0) student.Status = 'Paid';
                 else student.Status = 'Partially Paid';
@@ -1242,16 +1644,16 @@ window.deleteEvent = function(eventId) {
         state.transactions = state.transactions.filter(t => t.eventName !== event.title);
 
         // 4. Remove the event
-        state.events = state.events.filter(e => e.id !== eventId);
+        state.events = state.events.filter(e => e.id != eventId);
 
-        // 5. Update dashboard selection if it was the deleted event
-        if (state.dashboardEventId === eventId) {
+        // 5. Update dashboard selection
+        if (state.dashboardEventId == eventId) {
             state.dashboardEventId = state.events.length > 0 ? state.events[0].id : null;
         }
 
         saveToLocalStorage();
         renderApp();
-        showToast(`Event "${event.title}" and its records deleted successfully.`, 'info');
+        showToast(`Event "${event.title}" and its records deleted locally.`, 'info');
     }
 };
 
@@ -1311,20 +1713,8 @@ function renderStudentsTable() {
         let statusBadgeClass = 'badge-unpaid';
         if (student.Status === 'Paid') statusBadgeClass = 'badge-paid';
         else if (student.Status === 'Partially Paid') statusBadgeClass = 'badge-pending';
-        // Set action columns only for authorized admin roles (Treasurer, President, or Admin)
-        const isEditor = isAuthorizedEditor();
-        const adminActionCol = isEditor 
-            ? `<td class="admin-only">
-                    <button class="btn btn-glass btn-arrow" onclick="quickAddPaymentForStudent('${student.IndexNumber}')" title="Record Payment">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    </button>
-                    <button class="btn btn-glass btn-arrow" onclick="openEditStudent('${student.IndexNumber}')" title="Edit Student">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-                    </button>
-                </td>` 
-            : '';
-
         // Show editable inputs for paid/owed/status only to authorized editors
+        const isEditor = isAuthorizedEditor();
         const paidVal = (Number(student.AmountPaid) || 0);
         const owedVal = (Number(student.AmountOwed) || 0);
 
@@ -1354,7 +1744,6 @@ function renderStudentsTable() {
             ${owedCell}
             <td>${student.Department}</td>
             ${statusCell}
-            ${adminActionCol}
         `;
         tbody.appendChild(tr);
     });
@@ -1833,6 +2222,101 @@ function handleAddStudent(e) {
     showToast(`Registered ${fullName} successfully.`, 'success');
 }
 
+// ADMIN: Handle media upload
+async function handleAddMedia(e) {
+    e.preventDefault();
+    const title = document.getElementById('mediaTitle').value;
+    const fileInput = document.getElementById('uploadMediaFile');
+    const file = fileInput.files[0];
+
+    if (!file) return;
+
+    // Convert file to base64 for storage
+    const base64Data = await fileToBase64(file);
+
+    const mediaData = {
+        title: title,
+        filename: file.name,
+        mimetype: file.type,
+        size: file.size,
+        data: base64Data,
+        created_at: new Date().toISOString()
+    };
+
+    // Try Supabase first
+    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+        const result = await db.create('media', mediaData);
+        if (!result.error) {
+            showToast('Media uploaded successfully!', 'success');
+            closeAllModals();
+            loadMedia();
+            e.target.reset();
+            return;
+        }
+    }
+
+    // Fallback: Save to localStorage
+    const localMedia = {
+        id: 'L-' + Date.now(),
+        ...mediaData
+    };
+    state.media.push(localMedia);
+    saveToLocalStorage();
+    renderMediaGrid();
+    closeAllModals();
+    e.target.reset();
+    showToast('Media saved locally!', 'info');
+}
+
+// Helper: Convert file to base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// EVERYONE: Handle comment submission
+async function handleAddComment(e) {
+    e.preventDefault();
+    const author = document.getElementById('commentAuthor').value || 'Anonymous';
+    const comment = document.getElementById('commentText').value;
+
+    try {
+        const response = await fetch('/api/comments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ author, comment })
+        });
+
+        if (response.ok) {
+            showToast('Thank you for your feedback!', 'success');
+            closeAllModals();
+            loadComments();
+            e.target.reset();
+            return;
+        }
+    } catch (err) {
+        console.warn('Server post failed, saving comment locally.');
+    }
+
+    // Fallback: Save locally
+    const localComment = {
+        id: 'L-' + Date.now(),
+        author,
+        comment,
+        created_at: new Date().toISOString()
+    };
+    state.comments.push(localComment);
+    saveToLocalStorage();
+    renderCommentFeed();
+    closeAllModals();
+    e.target.reset();
+    showToast('Comment saved locally (Server offline).', 'success');
+}
+
 // ADMIN: Handle edit student form submit
 function handleEditStudent(e) {
     e.preventDefault();
@@ -1923,7 +2407,7 @@ function populateSelectors() {
 }
 
 // RECORD TRANSACTION ACTION
-function handleAddPayment() {
+async function handleAddPayment() {
     const index = document.getElementById('paymentStudentSelect').value;
     const eventId = document.getElementById('paymentEventSelect').value;
     const amt = parseFloat(document.getElementById('paymentAmount').value);
@@ -1934,41 +2418,42 @@ function handleAddPayment() {
         return;
     }
 
-    const student = state.students.find(s => s.IndexNumber === index);
+    const student = state.students.find(s => s.IndexNumber.toUpperCase() === index.toUpperCase());
     const event = state.events.find(e => e.id === eventId);
 
     if (!student || !event) {
-        showToast('Record validation failure. Student/Event lost.', 'error');
+        showToast('Record validation failure. Student/Event not found.', 'error');
         return;
     }
 
-    // 1. Generate Audit Transaction Record
-    const txnId = `TXN${Math.floor(10000 + Math.random() * 90000)}`;
+    // Generate Audit Transaction Record
     const now = new Date();
     const formattedDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
     const newTxn = {
-        id: txnId,
+        id: `TXN${Date.now()}`,
         date: formattedDate,
         studentName: student.FullName,
         studentIndex: student.IndexNumber,
         eventName: event.title,
         method: method,
         amount: amt,
-        status: 'Approved'
+        status: 'Approved',
+        student_id: student.id,
+        event_id: event.id
     };
 
-    // 2. Push to Ledger
+    // Push to Ledger
     state.transactions.push(newTxn);
 
-    // 3. Increment Student Collections (create numeric fields if missing)
+    // Update Student Collections
     student.AmountPaid = Number(student.AmountPaid) || 0;
     student.AmountOwed = Number(student.AmountOwed) || 0;
 
     student.AmountPaid += amt;
     student.AmountOwed = Math.max(0, student.AmountOwed - amt);
 
-    // Status update: if no owed amount then Paid
+    // Status update
     if (student.AmountOwed <= 0 && student.AmountPaid > 0) {
         student.Status = 'Paid';
         student.AmountOwed = 0;
@@ -1978,20 +2463,47 @@ function handleAddPayment() {
         student.Status = 'Unpaid';
     }
 
-    // 4. Increment Event Collections
+    // Increment Event Collections
     event.collected += amt;
 
-    // 5. Commit to LocalStorage
-    saveToLocalStorage();
+    // Save to Supabase (if configured) or localStorage
+    const useSupabase = window.SUPABASE_URL && !window.SUPABASE_URL.includes('YOUR_');
+    
+    if (useSupabase) {
+        // Save transaction to Supabase
+        await db.create('transactions', {
+            student_id: student.id,
+            event_id: event.id,
+            date: formattedDate,
+            method: method,
+            amount: amt,
+            status: 'Approved'
+        });
 
-    // 6. Refresh visuals
+        // Update student in Supabase
+        await db.update('students', student.id, {
+            amount_paid: student.AmountPaid,
+            amount_owed: student.AmountOwed,
+            status: student.Status
+        });
+
+        // Update event in Supabase
+        await db.update('events', event.id, {
+            collected: event.collected
+        });
+    } else {
+        // Fallback to localStorage
+        saveToLocalStorage();
+    }
+
+    // Refresh visuals
     renderApp();
     closeAllModals();
 
     // Reset inputs
     document.getElementById('paymentAmount').value = '';
 
-    showToast(`Payment of Rs. ${amt.toLocaleString()} recorded successfully for ${student.FullName}!`, 'success');
+    showToast(`Payment of Rs. ${amt.toLocaleString()} recorded for ${student.FullName}!`, 'success');
 }
 
 // PUBLISH NEW EVENT ACCOMPLISHMENT
@@ -2078,24 +2590,30 @@ function triggerExport(format) {
     closeAllModals();
 
     if (format === 'CSV') {
-        // Build a simulated download
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "IndexNumber,FullName,Department,AmountPaid,AmountOwed,Status\n";
-        
-        state.students.forEach(s => {
-            const paid = Number(s.AmountPaid) || 0;
-            const owed = Number(s.AmountOwed) || 0;
-            const status = s.Status || 'Unpaid';
-            csvContent += `"${s.IndexNumber}","${s.FullName}","${s.Department}",${paid},${owed},"${status}"\n`;
-        });
+        const csvRows = [
+            ["Index Number", "Full Name", "Registration No", "Department", "Paid (Rs.)", "Owed (Rs.)", "Status"],
+            ...state.students.map(s => [
+                s.IndexNumber,
+                s.FullName,
+                s.RegNo || '',
+                s.Department,
+                s.AmountPaid || 0,
+                s.AmountOwed || 0,
+                s.Status || 'Unpaid'
+            ])
+        ];
 
+        const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `RT_Funds_Students_Audit_22_23.csv`);
+        link.setAttribute("download", `RT_Funds_Audit_Report_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    } else if (format === 'PDF') {
+        // Simple and robust: use browser print for PDF export
+        window.print();
     }
 }
 
@@ -2148,3 +2666,201 @@ function showToast(message, type = 'info') {
         }, 300);
     }, 4000);
 }
+
+/* -------------------------------------------------------------
+ * ADMIN: COMMENT & MEDIA MANAGEMENT
+ * ------------------------------------------------------------- */
+
+// COMMENTS
+window.openEditCommentModal = function(id) {
+    const c = state.comments.find(x => x.id == id);
+    if (!c) return;
+    document.getElementById('editCommentId').value = c.id;
+    document.getElementById('editCommentAuthor').value = c.author || 'Anonymous';
+    document.getElementById('editCommentText').value = c.comment;
+    openModal('modalEditComment');
+};
+
+async function handleEditComment(e) {
+    e.preventDefault();
+    const id = document.getElementById('editCommentId').value;
+    const comment = document.getElementById('editCommentText').value;
+
+    try {
+        const response = await fetch(`/api/comments/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ comment })
+        });
+        if (response.ok) {
+            showToast('Comment updated successfully.', 'success');
+            closeAllModals();
+            loadComments();
+            return;
+        }
+    } catch (err) {}
+
+    // Fallback
+    const c = state.comments.find(x => x.id == id);
+    if (c) {
+        c.comment = comment;
+        saveToLocalStorage();
+        renderCommentFeed();
+        closeAllModals();
+        showToast('Comment updated locally.', 'success');
+    }
+}
+
+window.handleDeleteComment = async function(id) {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+
+    try {
+        const response = await fetch(`/api/comments/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            showToast('Comment deleted.', 'info');
+            loadComments();
+            return;
+        }
+    } catch (err) {}
+
+    // Fallback
+    state.comments = state.comments.filter(x => x.id != id);
+    saveToLocalStorage();
+    renderCommentFeed();
+    showToast('Comment deleted locally.', 'info');
+};
+
+// MEDIA
+window.openEditMediaModal = function(id) {
+    const m = state.media.find(x => x.id == id);
+    if (!m) return;
+    document.getElementById('editMediaId').value = m.id;
+    document.getElementById('editMediaTitle').value = m.title;
+    openModal('modalEditMedia');
+};
+
+async function handleEditMedia(e) {
+    e.preventDefault();
+    const id = document.getElementById('editMediaId').value;
+    const title = document.getElementById('editMediaTitle').value;
+
+    // Try Supabase first
+    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+        const result = await db.update('media', id, { title });
+        if (!result.error) {
+            showToast('Media title updated.', 'success');
+            closeAllModals();
+            loadMedia();
+            return;
+        }
+    }
+
+    // Fallback to API
+    try {
+        const response = await fetch(`/api/media/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title })
+        });
+        if (response.ok) {
+            showToast('Media title updated.', 'success');
+            closeAllModals();
+            loadMedia();
+            return;
+        }
+    } catch (err) {}
+
+    // Fallback to localStorage
+    const m = state.media.find(x => x.id == id);
+    if (m) {
+        m.title = title;
+        saveToLocalStorage();
+        renderMediaGrid();
+        closeAllModals();
+        showToast('Media title updated locally.', 'success');
+    }
+}
+
+window.handleDeleteMedia = async function(id) {
+    if (!confirm('Are you sure you want to permanently delete this media archive?')) return;
+
+    // Try Supabase first
+    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+        const result = await db.delete('media', id);
+        if (!result.error) {
+            showToast('Media deleted successfully.', 'info');
+            loadMedia();
+            return;
+        }
+    }
+
+    // Fallback to API
+    try {
+        const response = await fetch(`/api/media/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            showToast('Media deleted successfully.', 'info');
+            loadMedia();
+            return;
+        }
+    } catch (err) {}
+
+    // Fallback to localStorage
+    state.media = state.media.filter(x => x.id != id);
+    saveToLocalStorage();
+    renderMediaGrid();
+    showToast('Media deleted locally.', 'info');
+};
+
+// EVENTS
+window.openEditEventModal = function(id) {
+    const e = state.events.find(x => x.id == id);
+    if (!e) return;
+    document.getElementById('editEventId').value = e.id;
+    document.getElementById('editEventTitle').value = e.title;
+    document.getElementById('editEventTarget').value = e.target;
+    document.getElementById('editEventDeadline').value = e.deadline;
+    document.getElementById('editEventColorSelect').value = e.color;
+    openModal('modalEditEvent');
+};
+
+async function handleEditEvent(e) {
+    e.preventDefault();
+    const id = document.getElementById('editEventId').value;
+    const title = document.getElementById('editEventTitle').value;
+    const target = parseFloat(document.getElementById('editEventTarget').value);
+    const deadline = document.getElementById('editEventDeadline').value;
+    const color = document.getElementById('editEventColorSelect').value;
+
+    try {
+        const response = await fetch(`/api/events/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, target, deadline, color })
+        });
+        if (response.ok) {
+            showToast('Event updated successfully.', 'success');
+            closeAllModals();
+            // Refresh events
+            const updated = await response.json();
+            const idx = state.events.findIndex(x => x.id == id);
+            if (idx !== -1) state.events[idx] = updated;
+            renderApp();
+            return;
+        }
+    } catch (err) {}
+
+    // Fallback
+    const ev = state.events.find(x => x.id == id);
+    if (ev) {
+        ev.title = title;
+        ev.target = target;
+        ev.deadline = deadline;
+        ev.color = color;
+        saveToLocalStorage();
+        renderApp();
+        closeAllModals();
+        showToast('Event updated locally.', 'success');
+    }
+}
+
+// End of app.js

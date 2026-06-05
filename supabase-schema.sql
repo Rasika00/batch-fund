@@ -1,0 +1,157 @@
+-- RT Funds Database Schema for Supabase
+-- Run this in your Supabase SQL Editor (Dashboard > SQL Editor > New Query)
+
+-- =====================================================
+-- STUDENTS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS students (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    index_number TEXT UNIQUE NOT NULL,
+    full_name TEXT NOT NULL,
+    reg_no TEXT,
+    department TEXT,
+    amount_paid REAL DEFAULT 0,
+    amount_owed REAL DEFAULT 0,
+    status TEXT DEFAULT 'Unpaid',
+    monthly_payments JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_students_index ON students(index_number);
+CREATE INDEX IF NOT EXISTS idx_students_status ON students(status);
+
+-- =====================================================
+-- EVENTS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS events (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    title TEXT NOT NULL,
+    target REAL DEFAULT 0,
+    deadline DATE,
+    color TEXT,
+    collected REAL DEFAULT 0,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =====================================================
+-- TRANSACTIONS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS transactions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+    event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    method TEXT,
+    amount REAL NOT NULL,
+    status TEXT DEFAULT 'Approved',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_transactions_student ON transactions(student_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_event ON transactions(event_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
+
+-- =====================================================
+-- MEDIA TABLE (Base64 Storage for Static Hosting)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS media (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    title TEXT,
+    filename TEXT NOT NULL,
+    url TEXT,
+    data TEXT,
+    mimetype TEXT,
+    size INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =====================================================
+-- COMMENTS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS comments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    author TEXT,
+    comment TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =====================================================
+-- USER SESSIONS TABLE (for admin auth)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT DEFAULT 'Treasurer',
+    name TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =====================================================
+-- SEED DATA: Admin Users
+-- =====================================================
+INSERT INTO user_sessions (email, password_hash, role, name) VALUES
+    ('ENT2023070@tec.rjt.ac.lk', 'Sp03@tech', 'Treasurer', 'Salinda'),
+    ('itt2023097@tec.rjt.ac.lk', '200309700301.', 'Admin', 'Rasika')
+ON CONFLICT (email) DO NOTHING;
+
+-- =====================================================
+-- ROW LEVEL SECURITY (RLS)
+-- =====================================================
+ALTER TABLE students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE media ENABLE ROW LEVEL SECURITY;
+ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Public read access for all tables
+CREATE POLICY "Allow public read students" ON students FOR SELECT USING (true);
+CREATE POLICY "Allow public read events" ON events FOR SELECT USING (true);
+CREATE POLICY "Allow public read transactions" ON transactions FOR SELECT USING (true);
+CREATE POLICY "Allow public read media" ON media FOR SELECT USING (true);
+CREATE POLICY "Allow public read comments" ON comments FOR SELECT USING (true);
+
+-- Authenticated write access
+CREATE POLICY "Allow authenticated insert students" ON students FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow authenticated update students" ON students FOR UPDATE USING (true);
+CREATE POLICY "Allow authenticated delete students" ON students FOR DELETE USING (true);
+
+CREATE POLICY "Allow authenticated insert events" ON events FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow authenticated update events" ON events FOR UPDATE USING (true);
+CREATE POLICY "Allow authenticated delete events" ON events FOR DELETE USING (true);
+
+CREATE POLICY "Allow authenticated insert transactions" ON transactions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow authenticated update transactions" ON transactions FOR UPDATE USING (true);
+CREATE POLICY "Allow authenticated delete transactions" ON transactions FOR DELETE USING (true);
+
+CREATE POLICY "Allow authenticated insert media" ON media FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow authenticated update media" ON media FOR UPDATE USING (true);
+CREATE POLICY "Allow authenticated delete media" ON media FOR DELETE USING (true);
+
+CREATE POLICY "Allow authenticated insert comments" ON comments FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow authenticated update comments" ON comments FOR UPDATE USING (true);
+CREATE POLICY "Allow authenticated delete comments" ON comments FOR DELETE USING (true);
+
+-- =====================================================
+-- STORAGE BUCKET FOR MEDIA FILES
+-- =====================================================
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('funds-media', 'funds-media', true)
+ON CONFLICT DO NOTHING;
+
+CREATE POLICY "Allow public access to funds-media"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'funds-media');
+
+CREATE POLICY "Allow authenticated uploads to funds-media"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'funds-media');
+
+CREATE POLICY "Allow authenticated deletes from funds-media"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'funds-media');

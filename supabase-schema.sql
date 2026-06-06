@@ -107,7 +107,28 @@ ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE media ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist (for re-runs)
+DROP POLICY IF EXISTS "Allow public read students" ON students;
+DROP POLICY IF EXISTS "Allow public read events" ON events;
+DROP POLICY IF EXISTS "Allow public read transactions" ON transactions;
+DROP POLICY IF EXISTS "Allow public read media" ON media;
+DROP POLICY IF EXISTS "Allow public read comments" ON comments;
+DROP POLICY IF EXISTS "Allow authenticated insert students" ON students;
+DROP POLICY IF EXISTS "Allow authenticated update students" ON students;
+DROP POLICY IF EXISTS "Allow authenticated delete students" ON students;
+DROP POLICY IF EXISTS "Allow authenticated insert events" ON events;
+DROP POLICY IF EXISTS "Allow authenticated update events" ON events;
+DROP POLICY IF EXISTS "Allow authenticated delete events" ON events;
+DROP POLICY IF EXISTS "Allow authenticated insert transactions" ON transactions;
+DROP POLICY IF EXISTS "Allow authenticated update transactions" ON transactions;
+DROP POLICY IF EXISTS "Allow authenticated delete transactions" ON transactions;
+DROP POLICY IF EXISTS "Allow authenticated insert media" ON media;
+DROP POLICY IF EXISTS "Allow authenticated update media" ON media;
+DROP POLICY IF EXISTS "Allow authenticated delete media" ON media;
+DROP POLICY IF EXISTS "Allow authenticated insert comments" ON comments;
+DROP POLICY IF EXISTS "Allow authenticated update comments" ON comments;
+DROP POLICY IF EXISTS "Allow authenticated delete comments" ON comments;
 
 -- Public read access for all tables
 CREATE POLICY "Allow public read students" ON students FOR SELECT USING (true);
@@ -140,10 +161,17 @@ CREATE POLICY "Allow authenticated delete comments" ON comments FOR DELETE USING
 -- =====================================================
 -- STORAGE BUCKET FOR MEDIA FILES
 -- =====================================================
+-- Drop existing policies if they exist (bucket deletion via Storage API not allowed)
+DROP POLICY IF EXISTS "Allow public access to funds-media" ON storage.objects CASCADE;
+DROP POLICY IF EXISTS "Allow authenticated uploads to funds-media" ON storage.objects CASCADE;
+DROP POLICY IF EXISTS "Allow authenticated deletes from funds-media" ON storage.objects CASCADE;
+
+-- Create bucket (if not exists)
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('funds-media', 'funds-media', true)
 ON CONFLICT DO NOTHING;
 
+-- Create policies
 CREATE POLICY "Allow public access to funds-media"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'funds-media');

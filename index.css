@@ -1221,6 +1221,16 @@ h6 {
     box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.15);
 }
 
+.select-dark {
+    background: #06202B;
+    color: var(--text-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
 .select-dark option {
     background: #06202B;
     color: var(--text-white);

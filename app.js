@@ -3,6 +3,60 @@
  * Core Application Engine & Reactive State Controller
  * ------------------------------------------------------------- */
 
+// Supabase REST Client
+const supabase = {
+    from: (table) => ({
+        select: async (cols = '*') => {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${cols}`, {
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+            });
+            const data = await res.json();
+            return { data, error: res.ok ? null : data };
+        },
+        insert: async (data) => {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+                method: 'POST',
+                headers: { 
+                    'apikey': SUPABASE_ANON_KEY, 
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            return { data: result, error: res.ok ? null : result };
+        },
+        update: (data) => ({
+            eq: async (col, val) => {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${col}=eq.${val}`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'apikey': SUPABASE_ANON_KEY, 
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                return { data: result, error: res.ok ? null : result };
+            }
+        }),
+        delete: () => ({
+            eq: async (col, val) => {
+                await fetch(`${SUPABASE_URL}/rest/v1/${table}?${col}=eq.${val}`, {
+                    method: 'DELETE',
+                    headers: { 
+                        'apikey': SUPABASE_ANON_KEY, 
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                return { data: null, error: null };
+            }
+        })
+    })
+};
+
 // Global App State
 let state = {
     students: [],
@@ -23,7 +77,17 @@ const AUTHORIZED_ADMINS = [
 const UNIVERSITY_DOMAIN = '@tec.rjt.ac.lk';
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const YEARS = ["2025", "2026", "2027", "2028"];
 const MONTHLY_FEE = 100;
+
+// Helper to create empty monthly payments structure for all years
+function createEmptyMonthlyPayments() {
+    const payments = {};
+    YEARS.forEach(year => {
+        payments[year] = MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {});
+    });
+    return payments;
+}
 
 // Sample students inserted for Technology faculty. Payment fields are intentionally omitted;
 // only admins can add/modify `AmountPaid`, `AmountOwed`, and `Status`.
@@ -703,11 +767,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateVH();
     window.addEventListener('resize', updateVH);
 
-    initDatabase();
-    initEventListeners();
-    renderApp();
-    
-    // Check if there's a cached admin session
+    // Check if there's a cached admin session FIRST, before rendering
     const cachedUser = localStorage.getItem('rt_user_session');
     if (cachedUser) {
         state.currentUser = JSON.parse(cachedUser);
@@ -716,6 +776,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         toggleAdminInterface(false);
     }
+
+    initDatabase();
+    initEventListeners();
+    renderApp();
 
     document.getElementById('campusGate').classList.add('gate-hidden');
 
@@ -755,14 +819,20 @@ async function initDatabase() {
                 AmountPaid: 0,
                 AmountOwed: 0,
                 Status: 'Unpaid',
-                monthlyPayments: MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {})
+                monthlyPayments: createEmptyMonthlyPayments()
             }));
         }
         
         state.students.forEach(s => {
-            if (!s.monthlyPayments) {
-                s.monthlyPayments = MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {});
+            if (!s.monthlyPayments || typeof s.monthlyPayments !== 'object') {
+                s.monthlyPayments = createEmptyMonthlyPayments();
             }
+            // Ensure all years exist
+            YEARS.forEach(year => {
+                if (!s.monthlyPayments[year]) {
+                    s.monthlyPayments[year] = MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {});
+                }
+            });
         });
 
         const storedEvents = localStorage.getItem('rt_events');
@@ -790,17 +860,33 @@ async function initDatabase() {
 async function loadStudentsFromDB() {
     const data = await db.getAll('students');
     if (data && !data.error) {
-        state.students = data.map(s => ({
-            id: s.id,
-            IndexNumber: s.index_number,
-            FullName: s.full_name,
-            RegNo: s.reg_no,
-            Department: s.department,
-            AmountPaid: s.amount_paid || 0,
-            AmountOwed: s.amount_owed || 0,
-            Status: s.status || 'Unpaid',
-            monthlyPayments: s.monthly_payments || {}
-        }));
+        state.students = data.map(s => {
+            let monthlyPayments = createEmptyMonthlyPayments();
+            if (s.monthly_payments) {
+                try {
+                    const parsed = JSON.parse(s.monthly_payments);
+                    // Merge with empty structure to ensure all years exist
+                    YEARS.forEach(year => {
+                        if (parsed[year]) {
+                            monthlyPayments[year] = { ...monthlyPayments[year], ...parsed[year] };
+                        }
+                    });
+                } catch (e) {
+                    console.warn('Failed to parse monthly_payments:', e);
+                }
+            }
+            return {
+                id: s.id,
+                IndexNumber: s.index_number,
+                FullName: s.full_name,
+                RegNo: s.reg_no,
+                Department: s.department,
+                AmountPaid: s.amount_paid || 0,
+                AmountOwed: s.amount_owed || 0,
+                Status: s.status || 'Unpaid',
+                monthlyPayments
+            };
+        });
     }
 }
 
@@ -834,9 +920,13 @@ async function loadMediaFromDB() {
 }
 
 async function loadCommentsFromDB() {
-    const data = await db.getAll('comments');
-    if (data && !data.error) {
-        state.comments = data;
+    try {
+        const { data, error } = await supabase.from('comments').select('*');
+        if (!error && data) {
+            state.comments = data;
+        }
+    } catch (err) {
+        console.warn('Supabase unavailable for loadCommentsFromDB.');
     }
 }
 
@@ -1093,6 +1183,9 @@ function initEventListeners() {
     const searchMonthlyInput = document.getElementById('searchMonthlyInput');
     if (searchMonthlyInput) searchMonthlyInput.addEventListener('input', renderMonthlyView);
 
+    const monthlyYearSelect = document.getElementById('monthlyYearSelect');
+    if (monthlyYearSelect) monthlyYearSelect.addEventListener('change', renderMonthlyView);
+
     // Campus Gate Verification Listeners
     document.getElementById('btnVerifyGate').addEventListener('click', verifyCampusGate);
     document.getElementById('gateStudentIndex').addEventListener('keypress', (e) => {
@@ -1346,15 +1439,22 @@ function renderMediaGrid() {
 }
 
 async function loadComments() {
+    // Try Supabase first
     try {
-        const response = await fetch('/api/comments');
-        if (response.ok) {
-            state.comments = await response.json();
+        const { data, error } = await supabase.from('comments').select('*');
+        if (!error && data) {
+            state.comments = data;
             saveToLocalStorage();
+            renderCommentFeed();
+            return;
         }
-    } catch (err) { 
-        console.warn('API unavailable, loading comments from local storage fallback.'); 
+    } catch (err) {
+        console.warn('Supabase unavailable, trying local storage.');
     }
+    
+    // Fallback to localStorage
+    const storedComments = localStorage.getItem('rt_comments');
+    state.comments = storedComments ? JSON.parse(storedComments) : [];
     renderCommentFeed();
 }
 
@@ -1363,8 +1463,44 @@ function renderCommentFeed() {
     if (!feed) return;
     feed.innerHTML = '';
 
+    // Check if user is admin
+    const isAdmin = state.currentUser !== null;
+
+    // STUDENT VIEW: Non-admin users only see a message, not actual comments
+    if (!isAdmin) {
+        if (state.comments.length === 0) {
+            feed.innerHTML = `
+                <div class="content-card text-center">
+                    <div style="padding: 2rem;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 1rem; color: var(--text-muted);">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <h3 class="text-white margin-bottom-sm">Feedback & Comments</h3>
+                        <p class="text-muted">Your feedback helps us improve batch management.</p>
+                        <p class="text-muted margin-top-sm">Click "Leave a Comment" to share your thoughts.</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            feed.innerHTML = `
+                <div class="content-card text-center">
+                    <div style="padding: 2rem;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 1rem; color: var(--success);">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <h3 class="text-emerald margin-bottom-sm">Your comment is submitted!</h3>
+                        <p class="text-muted">Thank you for your feedback. Only administrators can view submitted comments.</p>
+                    </div>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    // ADMIN VIEW: Show all actual comments
     if (state.comments.length === 0) {
-        feed.innerHTML = '<div class="content-card text-center text-muted">Be the first to say something!</div>';
+        feed.innerHTML = '<div class="content-card text-center text-muted">No comments yet. Students will appear here once they submit feedback.</div>';
         return;
     }
 
@@ -1372,19 +1508,16 @@ function renderCommentFeed() {
         const div = document.createElement('div');
         div.className = 'content-card margin-bottom-md';
         
-        let adminButtons = '';
-        if (state.currentUser) {
-            adminButtons = `
-                <div class="flex-align-center gap-sm">
-                    <button class="btn btn-glass btn-sm" onclick="openEditCommentModal('${c.id}')" title="Edit Comment">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                    <button class="btn btn-glass btn-sm text-rose" onclick="handleDeleteComment('${c.id}')" title="Delete Comment">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    </button>
-                </div>
-            `;
-        }
+        const adminButtons = `
+            <div class="flex-align-center gap-sm">
+                <button class="btn btn-glass btn-sm" onclick="openEditCommentModal('${c.id}')" title="Edit Comment">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn btn-glass btn-sm text-rose" onclick="handleDeleteComment('${c.id}')" title="Delete Comment">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+            </div>
+        `;
 
         div.innerHTML = `
             <div style="display: flex; align-items: flex-start; gap: 1rem;">
@@ -1818,8 +1951,12 @@ function renderMonthlyView() {
     const headerRow = document.getElementById('monthlyHeaderRow');
     if (!tableBody || !headerRow) return;
 
+    // Get selected year
+    const yearSelect = document.getElementById('monthlyYearSelect');
+    const selectedYear = yearSelect ? yearSelect.value : YEARS[0];
+
     // Build Header
-    headerRow.innerHTML = '<th style="text-align: left; position: sticky; left: 0; background: var(--bg-card); z-index: 11;">Student Details</th>';
+    headerRow.innerHTML = `<th style="text-align: left; position: sticky; left: 0; background: var(--bg-card); z-index: 11;">Student Details (${selectedYear})</th>`;
     MONTHS.forEach(month => {
         const th = document.createElement('th');
         th.innerText = month;
@@ -1845,9 +1982,10 @@ function renderMonthlyView() {
         `;
 
         MONTHS.forEach(month => {
-            const isPaid = student.monthlyPayments[month];
+            const yearPayments = student.monthlyPayments[selectedYear] || {};
+            const isPaid = yearPayments[month] || false;
             html += `
-                <td class="month-cell" onclick="toggleMonthlyPayment('${student.IndexNumber}', '${month}')">
+                <td class="month-cell" onclick="toggleMonthlyPayment('${student.IndexNumber}', '${month}', '${selectedYear}')">
                     <div class="month-status ${isPaid ? 'paid' : ''}"></div>
                 </td>
             `;
@@ -1858,7 +1996,7 @@ function renderMonthlyView() {
     });
 }
 
-function toggleMonthlyPayment(indexNumber, month) {
+function toggleMonthlyPayment(indexNumber, month, year) {
     if (!state.currentUser) {
         showToast('Only authorized admins can modify payment records!', 'error');
         return;
@@ -1866,23 +2004,28 @@ function toggleMonthlyPayment(indexNumber, month) {
 
     const student = state.students.find(s => s.IndexNumber === indexNumber);
     if (student) {
-        student.monthlyPayments[month] = !student.monthlyPayments[month];
+        // Ensure year structure exists
+        if (!student.monthlyPayments[year]) {
+            student.monthlyPayments[year] = {};
+        }
+        
+        student.monthlyPayments[year][month] = !student.monthlyPayments[year][month];
         
         // Sync with transactions/stats if needed
-        const amount = student.monthlyPayments[month] ? MONTHLY_FEE : -MONTHLY_FEE;
+        const amount = student.monthlyPayments[year][month] ? MONTHLY_FEE : -MONTHLY_FEE;
         
         // Update summary student metrics (optional, if we want monthly to count towards total)
         // For now, let's keep monthly separate or add to AmountPaid
         student.AmountPaid += amount;
         
         // Record as transaction
-        if (student.monthlyPayments[month]) {
+        if (student.monthlyPayments[year][month]) {
             const txn = {
                 id: 'M-' + Date.now().toString().slice(-6),
                 date: new Date().toISOString().split('T')[0],
                 studentName: student.FullName,
                 studentIndex: student.IndexNumber,
-                eventName: `Monthly Fund (${month})`,
+                eventName: `Monthly Fund (${month} ${year})`,
                 amount: MONTHLY_FEE,
                 method: 'Direct Toggle',
                 status: 'Paid'
@@ -1891,14 +2034,14 @@ function toggleMonthlyPayment(indexNumber, month) {
         } else {
             // Remove the transaction if untoggled (search and destroy)
             state.transactions = state.transactions.filter(t => 
-                !(t.studentIndex === student.IndexNumber && t.eventName === `Monthly Fund (${month})`)
+                !(t.studentIndex === student.IndexNumber && t.eventName === `Monthly Fund (${month} ${year})`)
             );
         }
 
         saveToLocalStorage();
         renderMonthlyView();
         renderDashboardStats();
-        showToast(`${student.FullName} - ${month} marked as ${student.monthlyPayments[month] ? 'Paid' : 'Unpaid'}`, 'success');
+        showToast(`${student.FullName} - ${month} ${year} marked as ${student.monthlyPayments[year][month] ? 'Paid' : 'Unpaid'}`, 'success');
     }
 }
 
@@ -2284,14 +2427,15 @@ async function handleAddComment(e) {
     const author = document.getElementById('commentAuthor').value || 'Anonymous';
     const comment = document.getElementById('commentText').value;
 
+    // Try Supabase first
     try {
-        const response = await fetch('/api/comments', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ author, comment })
+        const { data, error } = await supabase.from('comments').insert({
+            author,
+            comment,
+            created_at: new Date().toISOString()
         });
 
-        if (response.ok) {
+        if (!error) {
             showToast('Thank you for your feedback!', 'success');
             closeAllModals();
             loadComments();
@@ -2299,7 +2443,7 @@ async function handleAddComment(e) {
             return;
         }
     } catch (err) {
-        console.warn('Server post failed, saving comment locally.');
+        console.warn('Supabase unavailable, saving locally.');
     }
 
     // Fallback: Save locally

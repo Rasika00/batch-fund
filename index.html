@@ -496,10 +496,19 @@
                 <!-- MONTHLY FUND VIEW -->
                 <section class="view-panel hidden" id="viewMonthly">
                     <div class="filter-card margin-bottom-lg">
-                        <div class="grid grid-2 gap-md">
+                        <div class="grid grid-3 gap-md">
                             <div class="form-group no-margin">
                                 <label class="control-label text-xs">Search Students</label>
                                 <input type="text" class="form-control" id="searchMonthlyInput" placeholder="Name or Index...">
+                            </div>
+                            <div class="form-group no-margin">
+                                <label class="control-label text-xs">Year</label>
+                                <select class="form-control select-dark" id="monthlyYearSelect">
+                                    <option value="2025">Year 1 - 2025</option>
+                                    <option value="2026">Year 2 - 2026</option>
+                                    <option value="2027">Year 3 - 2027</option>
+                                    <option value="2028">Year 4 - 2028</option>
+                                </select>
                             </div>
                             <div class="flex-align-center">
                                 <div class="monthly-info-box">
@@ -1136,7 +1145,32 @@
                     const applyTheme = (mode) => {
                         if (mode === 'light') {
                             body.classList.add('theme-light');
-                            label.textContent = 'Light';
+                                 monthlyPayments: {
+                              "2025": { "Jan": false, "Feb": false, ... },
+                              "2026": { "Jan": false, "Feb": true, ... },
+                              "2027": { "Jan": false, ... },
+                              "2028": { "Jan": false, ... }
+                            }                            monthlyPayments: {
+                              "2025": { "Jan": false, "Feb": false, ... },
+                              "2026": { "Jan": false, "Feb": true, ... },
+                              "2027": { "Jan": false, ... },
+                              "2028": { "Jan": false, ... }
+                            }                            monthlyPayments: {
+                              "2025": { "Jan": false, "Feb": false, ... },
+                              "2026": { "Jan": false, "Feb": true, ... },
+                              "2027": { "Jan": false, ... },
+                              "2028": { "Jan": false, ... }
+                            }                            monthlyPayments: {
+                              "2025": { "Jan": false, "Feb": false, ... },
+                              "2026": { "Jan": false, "Feb": true, ... },
+                              "2027": { "Jan": false, ... },
+                              "2028": { "Jan": false, ... }
+                            }                            monthlyPayments: {
+                              "2025": { "Jan": false, "Feb": false, ... },
+                              "2026": { "Jan": false, "Feb": true, ... },
+                              "2027": { "Jan": false, ... },
+                              "2028": { "Jan": false, ... }
+                            }                       label.textContent = 'Light';
                         } else {
                             body.classList.remove('theme-light');
                             label.textContent = 'Dark';
@@ -1150,6 +1184,8 @@
                     });
                 })();
             </script>
+            <!-- Supabase Config -->
+            <script src="supabase-config.js"></script>
             <!-- Main Controller JS -->
             <script src="app.js"></script>
 </body>

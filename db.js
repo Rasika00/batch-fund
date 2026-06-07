@@ -58,9 +58,71 @@ class Database {
         }
     }
 
+    buildQueryParams(options = {}) {
+        const params = [];
+        if (options.select) params.push(`select=${options.select}`);
+        if (options.order) params.push(`order=${options.order}`);
+        if (options.limit != null) params.push(`limit=${options.limit}`);
+        if (options.offset != null) params.push(`offset=${options.offset}`);
+        if (options.filters) {
+            Object.entries(options.filters).forEach(([key, value]) => {
+                params.push(`${key}=eq.${value}`);
+            });
+        }
+        return params.length ? `?${params.join('&')}` : '';
+    }
+
+    async fetchRows(table, options = {}) {
+        const query = this.buildQueryParams(options);
+        const url = `${this.url}/rest/v1/${table}${query}`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: this.headers
+        });
+        if (!response.ok) {
+            const error = await response.text();
+            console.error(`DB Error [GET ${table}]:`, error);
+            return { error };
+        }
+        return response.json();
+    }
+
     // CRUD Operations
-    async getAll(table, filters) {
-        return this.request('GET', table, { filters });
+    async getAll(table, options = {}) {
+        try {
+            return await this.fetchRows(table, options);
+        } catch (err) {
+            console.error(`DB Error [GET ${table}]:`, err);
+            return { error: err.message };
+        }
+    }
+
+    async getAllPaginated(table, options = {}) {
+        const pageSize = options.pageSize || 500;
+        let offset = 0;
+        const allRows = [];
+
+        try {
+            while (true) {
+                const batch = await this.fetchRows(table, {
+                    ...options,
+                    limit: pageSize,
+                    offset
+                });
+
+                if (batch?.error) return batch;
+                if (!Array.isArray(batch) || batch.length === 0) break;
+
+                allRows.push(...batch);
+                if (batch.length < pageSize) break;
+                offset += pageSize;
+            }
+
+            return allRows;
+        } catch (err) {
+            console.error(`DB Error [GET paginated ${table}]:`, err);
+            return { error: err.message };
+        }
     }
 
     async getById(table, id) {
@@ -69,6 +131,26 @@ class Database {
 
     async create(table, data) {
         return this.request('POST', table, { data });
+    }
+
+    async createMany(table, rows) {
+        const url = `${this.url}/rest/v1/${table}`;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: this.headers,
+                body: JSON.stringify(rows)
+            });
+            if (!response.ok) {
+                const error = await response.text();
+                console.error(`DB Error [POST bulk ${table}]:`, error);
+                return { error };
+            }
+            return response.json();
+        } catch (err) {
+            console.error(`DB Error [POST bulk ${table}]:`, err);
+            return { error: err.message };
+        }
     }
 
     async update(table, id, data) {

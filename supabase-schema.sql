@@ -137,26 +137,26 @@ CREATE POLICY "Allow public read transactions" ON transactions FOR SELECT USING 
 CREATE POLICY "Allow public read media" ON media FOR SELECT USING (true);
 CREATE POLICY "Allow public read comments" ON comments FOR SELECT USING (true);
 
--- Authenticated write access
-CREATE POLICY "Allow authenticated insert students" ON students FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow authenticated update students" ON students FOR UPDATE USING (true);
-CREATE POLICY "Allow authenticated delete students" ON students FOR DELETE USING (true);
+-- Public write access (anon key used by the static frontend)
+CREATE POLICY "Allow public insert students" ON students FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public update students" ON students FOR UPDATE TO anon, authenticated USING (true);
+CREATE POLICY "Allow public delete students" ON students FOR DELETE TO anon, authenticated USING (true);
 
-CREATE POLICY "Allow authenticated insert events" ON events FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow authenticated update events" ON events FOR UPDATE USING (true);
-CREATE POLICY "Allow authenticated delete events" ON events FOR DELETE USING (true);
+CREATE POLICY "Allow public insert events" ON events FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public update events" ON events FOR UPDATE TO anon, authenticated USING (true);
+CREATE POLICY "Allow public delete events" ON events FOR DELETE TO anon, authenticated USING (true);
 
-CREATE POLICY "Allow authenticated insert transactions" ON transactions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow authenticated update transactions" ON transactions FOR UPDATE USING (true);
-CREATE POLICY "Allow authenticated delete transactions" ON transactions FOR DELETE USING (true);
+CREATE POLICY "Allow public insert transactions" ON transactions FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public update transactions" ON transactions FOR UPDATE TO anon, authenticated USING (true);
+CREATE POLICY "Allow public delete transactions" ON transactions FOR DELETE TO anon, authenticated USING (true);
 
-CREATE POLICY "Allow authenticated insert media" ON media FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow authenticated update media" ON media FOR UPDATE USING (true);
-CREATE POLICY "Allow authenticated delete media" ON media FOR DELETE USING (true);
+CREATE POLICY "Allow public insert media" ON media FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public update media" ON media FOR UPDATE TO anon, authenticated USING (true);
+CREATE POLICY "Allow public delete media" ON media FOR DELETE TO anon, authenticated USING (true);
 
-CREATE POLICY "Allow authenticated insert comments" ON comments FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow authenticated update comments" ON comments FOR UPDATE USING (true);
-CREATE POLICY "Allow authenticated delete comments" ON comments FOR DELETE USING (true);
+CREATE POLICY "Allow public insert comments" ON comments FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow public update comments" ON comments FOR UPDATE TO anon, authenticated USING (true);
+CREATE POLICY "Allow public delete comments" ON comments FOR DELETE TO anon, authenticated USING (true);
 
 -- =====================================================
 -- STORAGE BUCKET FOR MEDIA FILES

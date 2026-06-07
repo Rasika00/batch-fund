@@ -1145,32 +1145,7 @@
                     const applyTheme = (mode) => {
                         if (mode === 'light') {
                             body.classList.add('theme-light');
-                                 monthlyPayments: {
-                              "2025": { "Jan": false, "Feb": false, ... },
-                              "2026": { "Jan": false, "Feb": true, ... },
-                              "2027": { "Jan": false, ... },
-                              "2028": { "Jan": false, ... }
-                            }                            monthlyPayments: {
-                              "2025": { "Jan": false, "Feb": false, ... },
-                              "2026": { "Jan": false, "Feb": true, ... },
-                              "2027": { "Jan": false, ... },
-                              "2028": { "Jan": false, ... }
-                            }                            monthlyPayments: {
-                              "2025": { "Jan": false, "Feb": false, ... },
-                              "2026": { "Jan": false, "Feb": true, ... },
-                              "2027": { "Jan": false, ... },
-                              "2028": { "Jan": false, ... }
-                            }                            monthlyPayments: {
-                              "2025": { "Jan": false, "Feb": false, ... },
-                              "2026": { "Jan": false, "Feb": true, ... },
-                              "2027": { "Jan": false, ... },
-                              "2028": { "Jan": false, ... }
-                            }                            monthlyPayments: {
-                              "2025": { "Jan": false, "Feb": false, ... },
-                              "2026": { "Jan": false, "Feb": true, ... },
-                              "2027": { "Jan": false, ... },
-                              "2028": { "Jan": false, ... }
-                            }                       label.textContent = 'Light';
+                            label.textContent = 'Light';
                         } else {
                             body.classList.remove('theme-light');
                             label.textContent = 'Dark';
@@ -1186,6 +1161,7 @@
             </script>
             <!-- Supabase Config -->
             <script src="supabase-config.js"></script>
+            <script src="db.js"></script>
             <!-- Main Controller JS -->
             <script src="app.js"></script>
 </body>

@@ -57,6 +57,44 @@ const supabase = {
     })
 };
 
+function useSupabase() {
+    return Boolean(
+        window.SUPABASE_URL &&
+        window.SUPABASE_ANON_KEY &&
+        !window.SUPABASE_URL.includes('YOUR_')
+    );
+}
+
+function mapTransactionRow(txn) {
+    const student = state.students.find(s => s.id === txn.student_id);
+    const event = state.events.find(e => e.id === txn.event_id);
+    return {
+        ...txn,
+        studentName: student?.FullName || txn.studentName || '',
+        studentIndex: student?.IndexNumber || txn.studentIndex || '',
+        eventName: event?.title || txn.eventName || ''
+    };
+}
+
+async function persistStudent(student) {
+    if (!useSupabase() || !student.id) {
+        saveToLocalStorage();
+        return;
+    }
+
+    await db.update('students', student.id, {
+        index_number: student.IndexNumber,
+        full_name: student.FullName,
+        reg_no: student.RegNo,
+        department: student.Department,
+        amount_paid: student.AmountPaid,
+        amount_owed: student.AmountOwed,
+        status: student.Status,
+        monthly_payments: JSON.stringify(student.monthlyPayments || {})
+    });
+    saveToLocalStorage();
+}
+
 // Global App State
 let state = {
     students: [],
@@ -746,6 +784,7 @@ const MOCK_STUDENTS = [
 ];
 const MOCK_EVENTS = [];
 const MOCK_TRANSACTIONS = [];
+const EXPECTED_STUDENT_COUNT = MOCK_STUDENTS.length;
 
 // Global Target Budget (Rs. 1,000,000)
 const GLOBAL_BUDGET_TARGET = 1000000;
@@ -758,7 +797,7 @@ let filteredStudentsList = [];
 /* -------------------------------------------------------------
  * INITIALIZATION & STORAGE
  * ------------------------------------------------------------- */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Universal Mobile Viewport Height (vh) Fix
     const updateVH = () => {
         let vh = window.innerHeight * 0.01;
@@ -777,9 +816,8 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleAdminInterface(false);
     }
 
-    initDatabase();
     initEventListeners();
-    renderApp();
+    await initDatabase();
 
     document.getElementById('campusGate').classList.add('gate-hidden');
 
@@ -798,10 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initDatabase() {
-    // Check if Supabase is configured
-    const useSupabase = window.SUPABASE_URL && !window.SUPABASE_URL.includes('YOUR_');
-
-    if (useSupabase) {
+    if (useSupabase()) {
         // Load from Supabase (Cloud Database)
         await loadStudentsFromDB();
         await loadEventsFromDB();
@@ -809,31 +844,7 @@ async function initDatabase() {
         await loadMediaFromDB();
         await loadCommentsFromDB();
     } else {
-        // Fallback to localStorage (for development without Supabase)
-        const storedStudents = localStorage.getItem('rt_students');
-        if (storedStudents) {
-            state.students = JSON.parse(storedStudents);
-        } else {
-            state.students = MOCK_STUDENTS.map(s => ({
-                ...s,
-                AmountPaid: 0,
-                AmountOwed: 0,
-                Status: 'Unpaid',
-                monthlyPayments: createEmptyMonthlyPayments()
-            }));
-        }
-        
-        state.students.forEach(s => {
-            if (!s.monthlyPayments || typeof s.monthlyPayments !== 'object') {
-                s.monthlyPayments = createEmptyMonthlyPayments();
-            }
-            // Ensure all years exist
-            YEARS.forEach(year => {
-                if (!s.monthlyPayments[year]) {
-                    s.monthlyPayments[year] = MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {});
-                }
-            });
-        });
+        applyLocalStudentFallback();
 
         const storedEvents = localStorage.getItem('rt_events');
         state.events = storedEvents ? JSON.parse(storedEvents) : [...MOCK_EVENTS];
@@ -857,36 +868,171 @@ async function initDatabase() {
 // =====================================================
 // SUPABASE DATABASE FUNCTIONS
 // =====================================================
-async function loadStudentsFromDB() {
-    const data = await db.getAll('students');
-    if (data && !data.error) {
-        state.students = data.map(s => {
-            let monthlyPayments = createEmptyMonthlyPayments();
-            if (s.monthly_payments) {
-                try {
-                    const parsed = JSON.parse(s.monthly_payments);
-                    // Merge with empty structure to ensure all years exist
-                    YEARS.forEach(year => {
-                        if (parsed[year]) {
-                            monthlyPayments[year] = { ...monthlyPayments[year], ...parsed[year] };
-                        }
-                    });
-                } catch (e) {
-                    console.warn('Failed to parse monthly_payments:', e);
-                }
+function parseMonthlyPayments(value) {
+    let monthlyPayments = createEmptyMonthlyPayments();
+    if (!value) return monthlyPayments;
+
+    try {
+        const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+        YEARS.forEach(year => {
+            if (parsed[year]) {
+                monthlyPayments[year] = { ...monthlyPayments[year], ...parsed[year] };
             }
-            return {
-                id: s.id,
-                IndexNumber: s.index_number,
-                FullName: s.full_name,
-                RegNo: s.reg_no,
-                Department: s.department,
-                AmountPaid: s.amount_paid || 0,
-                AmountOwed: s.amount_owed || 0,
-                Status: s.status || 'Unpaid',
-                monthlyPayments
-            };
         });
+    } catch (e) {
+        console.warn('Failed to parse monthly_payments:', e);
+    }
+
+    return monthlyPayments;
+}
+
+function mapDbStudent(s) {
+    return {
+        id: s.id,
+        IndexNumber: s.index_number,
+        FullName: s.full_name,
+        RegNo: s.reg_no,
+        Department: s.department,
+        AmountPaid: s.amount_paid || 0,
+        AmountOwed: s.amount_owed || 0,
+        Status: s.status || 'Unpaid',
+        monthlyPayments: parseMonthlyPayments(s.monthly_payments)
+    };
+}
+
+function normalizeStudentMonthlyPayments() {
+    state.students.forEach(s => {
+        if (!s.monthlyPayments || typeof s.monthlyPayments !== 'object') {
+            s.monthlyPayments = createEmptyMonthlyPayments();
+        }
+        YEARS.forEach(year => {
+            if (!s.monthlyPayments[year]) {
+                s.monthlyPayments[year] = MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {});
+            }
+        });
+    });
+}
+
+function buildStudentRowsForSeed(students = MOCK_STUDENTS) {
+    return students.map(s => ({
+        index_number: s.IndexNumber,
+        full_name: s.FullName,
+        reg_no: s.RegNo || null,
+        department: s.Department,
+        amount_paid: 0,
+        amount_owed: 0,
+        status: 'Unpaid',
+        monthly_payments: createEmptyMonthlyPayments()
+    }));
+}
+
+function mergeStudentsWithRoster(dbStudents = []) {
+    const dbMap = new Map(dbStudents.map(s => [s.index_number, s]));
+
+    return MOCK_STUDENTS.map(s => {
+        const row = dbMap.get(s.IndexNumber);
+        if (row) return mapDbStudent(row);
+
+        return {
+            ...s,
+            AmountPaid: 0,
+            AmountOwed: 0,
+            Status: 'Unpaid',
+            monthlyPayments: createEmptyMonthlyPayments()
+        };
+    });
+}
+
+function applyLocalStudentFallback() {
+    const storedStudents = localStorage.getItem('rt_students');
+    const storedMap = new Map();
+
+    if (storedStudents) {
+        try {
+            const parsed = JSON.parse(storedStudents);
+            if (Array.isArray(parsed)) {
+                parsed.forEach(s => storedMap.set(s.IndexNumber, s));
+            }
+        } catch (e) {
+            console.warn('Failed to parse cached students:', e);
+        }
+    }
+
+    state.students = MOCK_STUDENTS.map(s => {
+        const existing = storedMap.get(s.IndexNumber);
+        return {
+            ...s,
+            id: existing?.id,
+            AmountPaid: existing?.AmountPaid ?? 0,
+            AmountOwed: existing?.AmountOwed ?? 0,
+            Status: existing?.Status ?? 'Unpaid',
+            monthlyPayments: existing?.monthlyPayments || createEmptyMonthlyPayments()
+        };
+    });
+
+    normalizeStudentMonthlyPayments();
+    saveToLocalStorage();
+}
+
+async function seedStudentsToDB(students = MOCK_STUDENTS) {
+    const rows = buildStudentRowsForSeed(students);
+    if (rows.length === 0) return true;
+
+    const batchSize = 25;
+    for (let i = 0; i < rows.length; i += batchSize) {
+        const batch = rows.slice(i, i + batchSize);
+        const result = await db.createMany('students', batch);
+        if (result?.error) {
+            console.error('Failed to seed students batch:', result.error);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+async function seedMissingStudentsToDB(existingRows) {
+    const existingIndexes = new Set(
+        existingRows.map(s => s.index_number || s.IndexNumber)
+    );
+    const missing = MOCK_STUDENTS.filter(s => !existingIndexes.has(s.IndexNumber));
+    if (missing.length === 0) return true;
+
+    console.info(`Seeding ${missing.length} missing students to Supabase...`);
+    return seedStudentsToDB(missing);
+}
+
+async function loadStudentsFromDB() {
+    let data = await db.getAllPaginated('students', { order: 'index_number.asc' });
+
+    if (data?.error || !Array.isArray(data)) {
+        console.warn('Supabase students unavailable, using local fallback.');
+        applyLocalStudentFallback();
+        return;
+    }
+
+    if (data.length < EXPECTED_STUDENT_COUNT) {
+        if (data.length === 0) {
+            await seedStudentsToDB();
+        } else {
+            await seedMissingStudentsToDB(data);
+        }
+
+        data = await db.getAllPaginated('students', { order: 'index_number.asc' });
+    }
+
+    if (!Array.isArray(data) || data.length === 0) {
+        console.warn('Supabase students table is empty, using built-in student list.');
+        applyLocalStudentFallback();
+        return;
+    }
+
+    state.students = mergeStudentsWithRoster(data);
+    normalizeStudentMonthlyPayments();
+    saveToLocalStorage();
+
+    if (state.students.length < EXPECTED_STUDENT_COUNT) {
+        console.warn(`Loaded ${state.students.length}/${EXPECTED_STUDENT_COUNT} students from Supabase; merged with built-in roster.`);
     }
 }
 
@@ -906,9 +1052,9 @@ async function loadEventsFromDB() {
 }
 
 async function loadTransactionsFromDB() {
-    const data = await db.getAll('transactions', { 'order': 'created_at.desc' });
-    if (data && !data.error) {
-        state.transactions = data;
+    const data = await db.getAll('transactions', { order: 'created_at.desc' });
+    if (data && !data.error && Array.isArray(data)) {
+        state.transactions = data.map(mapTransactionRow);
     }
 }
 
@@ -927,59 +1073,6 @@ async function loadCommentsFromDB() {
         }
     } catch (err) {
         console.warn('Supabase unavailable for loadCommentsFromDB.');
-    }
-}
-
-// Legacy functions for localStorage fallback
-async function loadStudents() {
-    const response = await fetch('/api/students');
-    if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 0) {
-            state.students = data.map(s => ({
-                id: s.id,
-                IndexNumber: s.index_number,
-                FullName: s.full_name,
-                RegNo: s.reg_no,
-                Department: s.department,
-                AmountPaid: s.amount_paid,
-                AmountOwed: s.amount_owed,
-                Status: s.status,
-                monthlyPayments: s.monthly_payments ? JSON.parse(s.monthly_payments) : {}
-            }));
-            saveToLocalStorage();
-            filteredStudentsList = [...state.students];
-        }
-    }
-}
-
-async function loadEvents() {
-    const response = await fetch('/api/events');
-    if (response.ok) {
-        const data = await response.json();
-        if (data) {
-            state.events = data.map(e => ({
-                id: e.id,
-                title: e.title,
-                target: e.target,
-                collected: e.collected || 0,
-                deadline: e.deadline,
-                color: e.color,
-                active: true
-            }));
-            saveToLocalStorage();
-        }
-    }
-}
-
-async function loadTransactions() {
-    const response = await fetch('/api/transactions');
-    if (response.ok) {
-        const data = await response.json();
-        if (data) {
-            state.transactions = data;
-            saveToLocalStorage();
-        }
     }
 }
 
@@ -1283,24 +1376,13 @@ function switchView(viewName) {
 }
 
 async function loadMedia() {
-    // Try Supabase first
-    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+    if (useSupabase()) {
         await loadMediaFromDB();
-        saveToLocalStorage();
-        renderMediaGrid();
-        return;
+    } else {
+        const storedMedia = localStorage.getItem('rt_media');
+        state.media = storedMedia ? JSON.parse(storedMedia) : [];
     }
-    
-    // Fallback to API
-    try {
-        const response = await fetch('/api/media');
-        if (response.ok) {
-            state.media = await response.json();
-            saveToLocalStorage();
-        }
-    } catch (err) { 
-        console.warn('API unavailable, loading media from local storage fallback.'); 
-    }
+    saveToLocalStorage();
     renderMediaGrid();
 }
 
@@ -1439,22 +1521,13 @@ function renderMediaGrid() {
 }
 
 async function loadComments() {
-    // Try Supabase first
-    try {
-        const { data, error } = await supabase.from('comments').select('*');
-        if (!error && data) {
-            state.comments = data;
-            saveToLocalStorage();
-            renderCommentFeed();
-            return;
-        }
-    } catch (err) {
-        console.warn('Supabase unavailable, trying local storage.');
+    if (useSupabase()) {
+        await loadCommentsFromDB();
+    } else {
+        const storedComments = localStorage.getItem('rt_comments');
+        state.comments = storedComments ? JSON.parse(storedComments) : [];
     }
-    
-    // Fallback to localStorage
-    const storedComments = localStorage.getItem('rt_comments');
-    state.comments = storedComments ? JSON.parse(storedComments) : [];
+    saveToLocalStorage();
     renderCommentFeed();
 }
 
@@ -1744,17 +1817,38 @@ window.deleteEvent = async function(eventId) {
     if (!event) return;
 
     if (confirm(`CRITICAL ACTION: Are you sure you want to PERMANENTLY DELETE "${event.title}"? \n\nThis will: \n1. Remove the event \n2. Void ALL payments associated with it \n3. Revert student balance records \n\nThis cannot be undone.`)) {
-        
-        try {
-            const response = await fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-            if (response.ok) {
-                showToast(`Event "${event.title}" deleted and balances reverted.`, 'info');
-                // Refresh data from server
-                initDatabase(); // This fetches fresh data if using API
-                renderApp();
-                return;
+
+        if (useSupabase()) {
+            const txnsToVoid = state.transactions.filter(t => t.event_id === eventId || t.eventName === event.title);
+
+            for (const txn of txnsToVoid) {
+                const student = state.students.find(s => s.id === txn.student_id || s.IndexNumber === txn.studentIndex);
+                if (student) {
+                    student.AmountPaid = Math.max(0, (Number(student.AmountPaid) || 0) - (Number(txn.amount) || 0));
+                    student.AmountOwed = (Number(student.AmountOwed) || 0) + (Number(txn.amount) || 0);
+
+                    if (student.AmountPaid === 0) student.Status = 'Unpaid';
+                    else if (student.AmountOwed <= 0) student.Status = 'Paid';
+                    else student.Status = 'Partially Paid';
+
+                    await db.update('students', student.id, {
+                        amount_paid: student.AmountPaid,
+                        amount_owed: student.AmountOwed,
+                        status: student.Status
+                    });
+                }
+
+                if (txn.id) {
+                    await supabase.from('transactions').delete().eq('id', txn.id);
+                }
             }
-        } catch (err) {}
+
+            await db.delete('events', eventId);
+            showToast(`Event "${event.title}" deleted and balances reverted.`, 'info');
+            await initDatabase();
+            renderApp();
+            return;
+        }
 
         // Fallback: Local logic
         // 1. Identify all transactions for this event
@@ -1824,10 +1918,10 @@ function renderStudentsTable() {
     const paginationEl = document.querySelector('.pagination-container');
     if (paginationEl) paginationEl.style.display = 'none';
 
-    // Update paging info: show total count
+    const rosterTotal = state.students.length;
     document.getElementById('paginationInfo').innerText = totalStudents > 0
-        ? `Showing 1 to ${totalStudents} of ${totalStudents} students`
-        : `Showing 0 to 0 of 0 students`;
+        ? `Showing ${totalStudents} of ${rosterTotal} students`
+        : `Showing 0 of ${rosterTotal} students`;
 
     // Clear page indicator controls (not used)
     const pageIndicator = document.getElementById('pageIndicator');
@@ -2038,7 +2132,11 @@ function toggleMonthlyPayment(indexNumber, month, year) {
             );
         }
 
-        saveToLocalStorage();
+        if (useSupabase()) {
+            persistStudent(student);
+        } else {
+            saveToLocalStorage();
+        }
         renderMonthlyView();
         renderDashboardStats();
         showToast(`${student.FullName} - ${month} ${year} marked as ${student.monthlyPayments[year][month] ? 'Paid' : 'Unpaid'}`, 'success');
@@ -2324,7 +2422,7 @@ window.openEditStudent = function(indexNumber) {
 };
 
 // ADMIN: Handle manual student registration
-function handleAddStudent(e) {
+async function handleAddStudent(e) {
     e.preventDefault();
     if (!isAuthorizedEditor()) {
         showToast('Unauthorized access!', 'error');
@@ -2352,8 +2450,25 @@ function handleAddStudent(e) {
         AmountPaid: paid,
         AmountOwed: owed,
         Status: status,
-        monthlyPayments: MONTHS.reduce((acc, month) => ({ ...acc, [month]: false }), {})
+        monthlyPayments: createEmptyMonthlyPayments()
     };
+
+    if (useSupabase()) {
+        const result = await db.create('students', {
+            index_number: indexNumber,
+            full_name: fullName,
+            reg_no: regNo,
+            department: dept,
+            amount_paid: paid,
+            amount_owed: owed,
+            status: status,
+            monthly_payments: JSON.stringify(newStudent.monthlyPayments)
+        });
+        const created = Array.isArray(result) ? result[0] : result;
+        if (created && !created.error) {
+            newStudent.id = created.id;
+        }
+    }
 
     state.students.push(newStudent);
     saveToLocalStorage();
@@ -2386,8 +2501,7 @@ async function handleAddMedia(e) {
         created_at: new Date().toISOString()
     };
 
-    // Try Supabase first
-    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+    if (useSupabase()) {
         const result = await db.create('media', mediaData);
         if (!result.error) {
             showToast('Media uploaded successfully!', 'success');
@@ -2427,9 +2541,8 @@ async function handleAddComment(e) {
     const author = document.getElementById('commentAuthor').value || 'Anonymous';
     const comment = document.getElementById('commentText').value;
 
-    // Try Supabase first
-    try {
-        const { data, error } = await supabase.from('comments').insert({
+    if (useSupabase()) {
+        const { error } = await supabase.from('comments').insert({
             author,
             comment,
             created_at: new Date().toISOString()
@@ -2442,8 +2555,6 @@ async function handleAddComment(e) {
             e.target.reset();
             return;
         }
-    } catch (err) {
-        console.warn('Supabase unavailable, saving locally.');
     }
 
     // Fallback: Save locally
@@ -2462,7 +2573,7 @@ async function handleAddComment(e) {
 }
 
 // ADMIN: Handle edit student form submit
-function handleEditStudent(e) {
+async function handleEditStudent(e) {
     e.preventDefault();
     const idx = document.getElementById('editIndexNumber').value.trim();
     const paid = parseFloat(document.getElementById('editAmountPaid').value) || 0;
@@ -2485,15 +2596,14 @@ function handleEditStudent(e) {
     student.AmountOwed = owed;
     student.Status = status;
 
-    // Persist and refresh
-    saveToLocalStorage();
+    await persistStudent(student);
     renderApp();
     closeAllModals();
     showToast(`Student ${student.IndexNumber} updated.`, 'success');
 }
 
 // Inline update handler used by table inputs/selects
-window.inlineUpdateStudent = function(indexNumber, field, value) {
+window.inlineUpdateStudent = async function(indexNumber, field, value) {
     // Only authorized admins may update
     if (!isAuthorizedEditor()) {
         showToast('Only authorized administrators may update this field.', 'error');
@@ -2517,8 +2627,7 @@ window.inlineUpdateStudent = function(indexNumber, field, value) {
         student[field] = value;
     }
 
-    // Persist and refresh summary visuals
-    saveToLocalStorage();
+    await persistStudent(student);
     renderApp();
     showToast(`Updated ${indexNumber} ${field}.`, 'success');
 };
@@ -2610,12 +2719,8 @@ async function handleAddPayment() {
     // Increment Event Collections
     event.collected += amt;
 
-    // Save to Supabase (if configured) or localStorage
-    const useSupabase = window.SUPABASE_URL && !window.SUPABASE_URL.includes('YOUR_');
-    
-    if (useSupabase) {
-        // Save transaction to Supabase
-        await db.create('transactions', {
+    if (useSupabase()) {
+        const result = await db.create('transactions', {
             student_id: student.id,
             event_id: event.id,
             date: formattedDate,
@@ -2623,22 +2728,25 @@ async function handleAddPayment() {
             amount: amt,
             status: 'Approved'
         });
+        const created = Array.isArray(result) ? result[0] : result;
+        if (created && !created.error) {
+            newTxn.id = created.id;
+            newTxn.student_id = student.id;
+            newTxn.event_id = event.id;
+        }
 
-        // Update student in Supabase
         await db.update('students', student.id, {
             amount_paid: student.AmountPaid,
             amount_owed: student.AmountOwed,
             status: student.Status
         });
 
-        // Update event in Supabase
         await db.update('events', event.id, {
             collected: event.collected
         });
-    } else {
-        // Fallback to localStorage
-        saveToLocalStorage();
     }
+
+    saveToLocalStorage();
 
     // Refresh visuals
     renderApp();
@@ -2651,7 +2759,7 @@ async function handleAddPayment() {
 }
 
 // PUBLISH NEW EVENT ACCOMPLISHMENT
-function handleNewEvent() {
+async function handleNewEvent() {
     const title = document.getElementById('eventTitle').value.trim();
     const target = parseFloat(document.getElementById('eventTarget').value);
     const deadline = document.getElementById('eventDeadline').value;
@@ -2672,6 +2780,21 @@ function handleNewEvent() {
         active: true
     };
 
+    if (useSupabase()) {
+        const result = await db.create('events', {
+            title,
+            target,
+            deadline,
+            color: accentColor,
+            collected: 0,
+            active: true
+        });
+        const created = Array.isArray(result) ? result[0] : result;
+        if (created && !created.error) {
+            newEvent.id = created.id;
+        }
+    }
+
     state.events.push(newEvent);
     saveToLocalStorage();
 
@@ -2689,7 +2812,7 @@ function handleNewEvent() {
 }
 
 // VOID / DELETE TRANSACTION (ADMIN HELP)
-window.voidTransaction = function(txnId) {
+window.voidTransaction = async function(txnId) {
     if (!state.currentUser) return;
 
     if (confirm(`Are you absolutely sure you want to void transaction ${txnId}? All associated student/event balances will be reverted.`)) {
@@ -2698,12 +2821,11 @@ window.voidTransaction = function(txnId) {
 
         const txn = state.transactions[txnIndex];
 
-        // 1. Revert student totals
-        const student = state.students.find(s => s.IndexNumber === txn.studentIndex);
+        const student = state.students.find(s => s.IndexNumber === txn.studentIndex || s.id === txn.student_id);
         if (student) {
             student.AmountPaid = Math.max(0, (Number(student.AmountPaid) || 0) - txn.amount);
             student.AmountOwed = (Number(student.AmountOwed) || 0) + txn.amount;
-            
+
             if (student.AmountPaid === 0) {
                 student.Status = 'Unpaid';
             } else if (student.AmountOwed <= 0) {
@@ -2713,14 +2835,28 @@ window.voidTransaction = function(txnId) {
             }
         }
 
-        // 2. Revert event collections
-        const event = state.events.find(e => e.title === txn.eventName);
+        const event = state.events.find(e => e.title === txn.eventName || e.id === txn.event_id);
         if (event) {
             event.collected = Math.max(0, event.collected - txn.amount);
         }
 
-        // 3. Splice transaction
         state.transactions.splice(txnIndex, 1);
+
+        if (useSupabase()) {
+            if (student?.id) {
+                await db.update('students', student.id, {
+                    amount_paid: student.AmountPaid,
+                    amount_owed: student.AmountOwed,
+                    status: student.Status
+                });
+            }
+            if (event?.id) {
+                await db.update('events', event.id, {
+                    collected: event.collected
+                });
+            }
+            await supabase.from('transactions').delete().eq('id', txnId);
+        }
 
         saveToLocalStorage();
         renderApp();
@@ -2830,21 +2966,16 @@ async function handleEditComment(e) {
     const id = document.getElementById('editCommentId').value;
     const comment = document.getElementById('editCommentText').value;
 
-    try {
-        const response = await fetch(`/api/comments/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ comment })
-        });
-        if (response.ok) {
+    if (useSupabase()) {
+        const { error } = await supabase.from('comments').update({ comment }).eq('id', id);
+        if (!error) {
             showToast('Comment updated successfully.', 'success');
             closeAllModals();
             loadComments();
             return;
         }
-    } catch (err) {}
+    }
 
-    // Fallback
     const c = state.comments.find(x => x.id == id);
     if (c) {
         c.comment = comment;
@@ -2858,16 +2989,15 @@ async function handleEditComment(e) {
 window.handleDeleteComment = async function(id) {
     if (!confirm('Are you sure you want to delete this comment?')) return;
 
-    try {
-        const response = await fetch(`/api/comments/${id}`, { method: 'DELETE' });
-        if (response.ok) {
+    if (useSupabase()) {
+        const { error } = await supabase.from('comments').delete().eq('id', id);
+        if (!error) {
             showToast('Comment deleted.', 'info');
             loadComments();
             return;
         }
-    } catch (err) {}
+    }
 
-    // Fallback
     state.comments = state.comments.filter(x => x.id != id);
     saveToLocalStorage();
     renderCommentFeed();
@@ -2888,8 +3018,7 @@ async function handleEditMedia(e) {
     const id = document.getElementById('editMediaId').value;
     const title = document.getElementById('editMediaTitle').value;
 
-    // Try Supabase first
-    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+    if (useSupabase()) {
         const result = await db.update('media', id, { title });
         if (!result.error) {
             showToast('Media title updated.', 'success');
@@ -2898,21 +3027,6 @@ async function handleEditMedia(e) {
             return;
         }
     }
-
-    // Fallback to API
-    try {
-        const response = await fetch(`/api/media/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title })
-        });
-        if (response.ok) {
-            showToast('Media title updated.', 'success');
-            closeAllModals();
-            loadMedia();
-            return;
-        }
-    } catch (err) {}
 
     // Fallback to localStorage
     const m = state.media.find(x => x.id == id);
@@ -2928,8 +3042,7 @@ async function handleEditMedia(e) {
 window.handleDeleteMedia = async function(id) {
     if (!confirm('Are you sure you want to permanently delete this media archive?')) return;
 
-    // Try Supabase first
-    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+    if (useSupabase()) {
         const result = await db.delete('media', id);
         if (!result.error) {
             showToast('Media deleted successfully.', 'info');
@@ -2937,16 +3050,6 @@ window.handleDeleteMedia = async function(id) {
             return;
         }
     }
-
-    // Fallback to API
-    try {
-        const response = await fetch(`/api/media/${id}`, { method: 'DELETE' });
-        if (response.ok) {
-            showToast('Media deleted successfully.', 'info');
-            loadMedia();
-            return;
-        }
-    } catch (err) {}
 
     // Fallback to localStorage
     state.media = state.media.filter(x => x.id != id);
@@ -2975,25 +3078,27 @@ async function handleEditEvent(e) {
     const deadline = document.getElementById('editEventDeadline').value;
     const color = document.getElementById('editEventColorSelect').value;
 
-    try {
-        const response = await fetch(`/api/events/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, target, deadline, color })
-        });
-        if (response.ok) {
+    if (useSupabase()) {
+        const result = await db.update('events', id, { title, target, deadline, color });
+        if (!result.error) {
             showToast('Event updated successfully.', 'success');
             closeAllModals();
-            // Refresh events
-            const updated = await response.json();
             const idx = state.events.findIndex(x => x.id == id);
-            if (idx !== -1) state.events[idx] = updated;
+            if (idx !== -1) {
+                state.events[idx] = {
+                    ...state.events[idx],
+                    title,
+                    target,
+                    deadline,
+                    color
+                };
+            }
+            saveToLocalStorage();
             renderApp();
             return;
         }
-    } catch (err) {}
+    }
 
-    // Fallback
     const ev = state.events.find(x => x.id == id);
     if (ev) {
         ev.title = title;

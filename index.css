@@ -1127,11 +1127,9 @@ h6 {
     background: rgba(255, 255, 255, 0.015);
 }
 
-/* Constrain table height and enable vertical scrolling for large registries */
+/* Table scrolls naturally with page content - no height constraint */
 .table-container.students-scroll {
-    max-height: 500px;
-    /* increased slightly for better view */
-    overflow-y: auto;
+    overflow-y: visible;
     scrollbar-width: thin;
     scrollbar-color: rgba(var(--accent-rgb), 0.3) transparent;
 }

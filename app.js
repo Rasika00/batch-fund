@@ -100,6 +100,7 @@ let state = {
     students: [],
     events: [],
     transactions: [],
+    expenses: [],
     media: [],
     comments: [],
     currentUser: null, // Stores { email: '', role: 'Treasurer' | 'President' } if authenticated
@@ -841,6 +842,7 @@ async function initDatabase() {
         await loadStudentsFromDB();
         await loadEventsFromDB();
         await loadTransactionsFromDB();
+        await loadExpensesFromDB();
         await loadMediaFromDB();
         await loadCommentsFromDB();
     } else {
@@ -851,6 +853,9 @@ async function initDatabase() {
 
         const storedTransactions = localStorage.getItem('rt_transactions');
         state.transactions = storedTransactions ? JSON.parse(storedTransactions) : [...MOCK_TRANSACTIONS];
+
+        const storedExpenses = localStorage.getItem('rt_expenses');
+        state.expenses = storedExpenses ? JSON.parse(storedExpenses) : [];
 
         const storedMedia = localStorage.getItem('rt_media');
         state.media = storedMedia ? JSON.parse(storedMedia) : [];
@@ -1039,15 +1044,42 @@ async function loadStudentsFromDB() {
 async function loadEventsFromDB() {
     const data = await db.getAll('events');
     if (data && !data.error) {
-        state.events = data.map(e => ({
+        state.events = data.map(e => {
+            let actualColor = e.color || '';
+            let extractedContribution = 0;
+            if (actualColor && actualColor.includes('|')) {
+                const parts = actualColor.split('|');
+                actualColor = parts[0];
+                extractedContribution = parseFloat(parts[1]);
+            }
+            return {
+                id: e.id,
+                title: e.title,
+                target: e.target || 0,
+                collected: e.collected || 0,
+                deadline: e.deadline,
+                color: actualColor,
+                active: e.active !== false,
+                studentContribution: e.student_contribution || extractedContribution || 0
+            };
+        });
+    }
+}
+
+async function loadExpensesFromDB() {
+    const data = await db.getAll('expenses');
+    if (data && !data.error && Array.isArray(data)) {
+        state.expenses = data.map(e => ({
             id: e.id,
+            date: e.date,
             title: e.title,
-            target: e.target || 0,
-            collected: e.collected || 0,
-            deadline: e.deadline,
-            color: e.color,
-            active: e.active !== false
+            amount: e.amount,
+            description: e.description || ''
         }));
+    } else {
+        // Fallback to local storage if table doesn't exist or error
+        const storedExpenses = localStorage.getItem('rt_expenses');
+        state.expenses = storedExpenses ? JSON.parse(storedExpenses) : [];
     }
 }
 
@@ -1080,6 +1112,7 @@ function saveToLocalStorage() {
     localStorage.setItem('rt_students', JSON.stringify(state.students));
     localStorage.setItem('rt_events', JSON.stringify(state.events));
     localStorage.setItem('rt_transactions', JSON.stringify(state.transactions));
+    localStorage.setItem('rt_expenses', JSON.stringify(state.expenses));
     localStorage.setItem('rt_media', JSON.stringify(state.media));
     localStorage.setItem('rt_comments', JSON.stringify(state.comments));
 }
@@ -1113,18 +1146,10 @@ function initEventListeners() {
             switchView('events');
         });
     }
-    const linkToTransactions = document.getElementById('linkToTransactions');
-    if (linkToTransactions) {
-        linkToTransactions.addEventListener('click', (e) => {
-            e.preventDefault();
-            switchView('transactions');
-        });
-    }
 
     document.getElementById('dashboardEventSelect').addEventListener('change', (e) => {
         state.dashboardEventId = e.target.value;
         renderDashboardStats();
-        renderDashboardRecentTransactions();
     });
 
     // Modal Control: Generic Closer
@@ -1181,25 +1206,67 @@ function initEventListeners() {
 
     // Request Receipt Action
     document.getElementById('btnRequestReceipt').addEventListener('click', () => {
-        showToast('Receipt PDF compilation initiated... Download will start shortly.', 'success');
-        closeAllModals();
+        const rawIndex = document.getElementById('studentSearchIndex').value.toUpperCase().trim();
+        const student = state.students.find(s => s.IndexNumber.toUpperCase() === rawIndex);
+        if (!student) {
+            showToast('Cannot generate receipt: Student not found.', 'error');
+            return;
+        }
+
+        // Generate Text Receipt
+        let receiptStr = `=======================================\n`;
+        receiptStr += `   BATCH FUND CONTRIBUTION RECEIPT     \n`;
+        receiptStr += `=======================================\n\n`;
+        receiptStr += `Date Generated : ${new Date().toLocaleString()}\n\n`;
+        receiptStr += `[STUDENT DETAILS]\n`;
+        receiptStr += `Name          : ${student.FullName}\n`;
+        receiptStr += `Index Number  : ${student.IndexNumber}\n`;
+        receiptStr += `Registration  : ${student.RegNo || 'N/A'}\n`;
+        receiptStr += `Department    : ${student.Department}\n`;
+        receiptStr += `Status        : ${student.Status || 'Unpaid'}\n\n`;
+
+        receiptStr += `[EVENT BREAKDOWN]\n`;
+        
+        const payments = state.transactions.filter(t => t.studentIndex === student.IndexNumber);
+        
+        state.events.forEach(event => {
+            const required = Number(event.studentContribution) || 0;
+            const eventTxns = payments.filter(t => t.event_id === event.id || t.eventName === event.title);
+            const paidForEvent = eventTxns.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+            const owedForEvent = Math.max(0, required - paidForEvent);
+            
+            receiptStr += `- ${event.title}\n`;
+            receiptStr += `  Target: Rs. ${required.toLocaleString()} | Paid: Rs. ${paidForEvent.toLocaleString()} | Owed: Rs. ${owedForEvent.toLocaleString()}\n`;
+        });
+        
+        receiptStr += `\n[TRANSACTION HISTORY]\n`;
+        if (payments.length === 0) {
+            receiptStr += `No payments recorded.\n`;
+        } else {
+            const sortedPayments = payments.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+            sortedPayments.forEach(p => {
+                receiptStr += `${p.date} - ${p.eventName || 'Unassigned Event'} - Rs. ${Number(p.amount).toLocaleString()}\n`;
+            });
+        }
+        
+        receiptStr += `\n=======================================\n`;
+        receiptStr += `Thank you for your contribution!\n`;
+        
+        // Trigger download
+        const blob = new Blob([receiptStr], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Receipt_${student.IndexNumber}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('Receipt downloaded successfully.', 'success');
     });
 
-    // Trigger Add Payment Modal
-    const btnQuickAddPayment = document.getElementById('btnQuickAddPayment');
-    if (btnQuickAddPayment) {
-        btnQuickAddPayment.addEventListener('click', () => {
-            populateSelectors();
-            openModal('modalAddPayment');
-        });
-    }
-    const btnCreateTransaction = document.getElementById('btnCreateTransaction');
-    if (btnCreateTransaction) {
-        btnCreateTransaction.addEventListener('click', () => {
-            populateSelectors();
-            openModal('modalAddPayment');
-        });
-    }
+
 
     // Add Student Form (Admin)
     const addStudentBtn = document.getElementById('btnOpenAddStudent');
@@ -1208,15 +1275,18 @@ function initEventListeners() {
     const addStudentForm = document.getElementById('addStudentForm');
     if (addStudentForm) addStudentForm.addEventListener('submit', handleAddStudent);
 
+    const addExpenseForm = document.getElementById('addExpenseForm');
+    if (addExpenseForm) addExpenseForm.addEventListener('submit', handleNewExpense);
+
+    const expenseYearSelect = document.getElementById('expenseYearSelect');
+    if (expenseYearSelect) expenseYearSelect.addEventListener('change', () => {
+        if (typeof renderExpensesTable === 'function') renderExpensesTable();
+    });
+
     // Edit Student Form (Admin)
     const editForm = document.getElementById('editStudentForm');
     if (editForm) editForm.addEventListener('submit', handleEditStudent);
 
-    // Record Payment Form Submit
-    document.getElementById('paymentForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        handleAddPayment();
-    });
 
     // Trigger New Event Modal
     document.getElementById('btnAddNewEvent').addEventListener('click', () => {
@@ -1232,8 +1302,6 @@ function initEventListeners() {
     // Exports Triggers
     const btnExportStudents = document.getElementById('btnExportStudents');
     if (btnExportStudents) btnExportStudents.addEventListener('click', () => openModal('modalExport'));
-    const btnExportTransactions = document.getElementById('btnExportTransactions');
-    if (btnExportTransactions) btnExportTransactions.addEventListener('click', () => openModal('modalExport'));
     const btnExportPDFAction = document.getElementById('btnExportPDFAction');
     if (btnExportPDFAction) btnExportPDFAction.addEventListener('click', () => triggerExport('PDF'));
     const btnExportCSVAction = document.getElementById('btnExportCSVAction');
@@ -1248,7 +1316,6 @@ function initEventListeners() {
     if (filterDeptSelect) {
         filterDeptSelect.addEventListener('change', applyStudentFilters);
     }
-    document.getElementById('filterStatusSelect').addEventListener('change', applyStudentFilters);
 
     // Pagination Click Actions
     const btnPrevPage = document.getElementById('btnPrevPage');
@@ -1267,17 +1334,16 @@ function initEventListeners() {
         }
     });
 
-    // Transactions Search & Filters (detached since Transactions view removed)
-    const searchTransactionInput = document.getElementById('searchTransactionInput');
-    if (searchTransactionInput) searchTransactionInput.addEventListener('input', () => { /* transactions view removed */ });
-    const filterPaymentMethod = document.getElementById('filterPaymentMethod');
-    if (filterPaymentMethod) filterPaymentMethod.addEventListener('change', () => { /* transactions view removed */ });
+    // transactions view removed
 
     const searchMonthlyInput = document.getElementById('searchMonthlyInput');
     if (searchMonthlyInput) searchMonthlyInput.addEventListener('input', renderMonthlyView);
 
     const monthlyYearSelect = document.getElementById('monthlyYearSelect');
     if (monthlyYearSelect) monthlyYearSelect.addEventListener('change', renderMonthlyView);
+
+    const monthlyDashboardYearSelect = document.getElementById('monthlyDashboardYearSelect');
+    if (monthlyDashboardYearSelect) monthlyDashboardYearSelect.addEventListener('change', renderMonthlyDashboardStats);
 
     // Campus Gate Verification Listeners
     document.getElementById('btnVerifyGate').addEventListener('click', verifyCampusGate);
@@ -1620,6 +1686,8 @@ function renderApp() {
     renderEventsGrid();
     populateStudentEventSelector();
     renderMonthlyView(); // New view
+    if (typeof renderMonthlyDashboardStats === 'function') renderMonthlyDashboardStats();
+    if (typeof renderExpensesTable === 'function') renderExpensesTable();
     
     // Refresh media and comments if we are on those views
     const activeView = document.querySelector('.nav-item.active')?.getAttribute('data-view');
@@ -1635,14 +1703,18 @@ function populateStudentEventSelector() {
     const sel = document.getElementById('filterEventSelect');
     if (!sel) return;
     sel.innerHTML = '';
-    const optAll = document.createElement('option');
-    optAll.value = 'All';
-    optAll.innerText = 'All Events';
-    sel.appendChild(optAll);
+    
+    if (state.events.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.innerText = 'No events available';
+        sel.appendChild(opt);
+        return;
+    }
 
     state.events.forEach(ev => {
         const o = document.createElement('option');
-        o.value = ev.title;
+        o.value = ev.id;
         o.innerText = ev.title;
         sel.appendChild(o);
     });
@@ -1698,49 +1770,95 @@ function isEntAdmin() {
 
 function renderDashboardStats() {
     const selectedEvent = getSelectedDashboardEvent();
-    const totalCollected = selectedEvent ? selectedEvent.collected : 0;
-    const targetAmount = selectedEvent ? selectedEvent.target : 0;
-    const collectionPercent = targetAmount > 0 ? Math.min(100, Math.round((totalCollected / targetAmount) * 100)) : 0;
+    if (!selectedEvent) return;
 
-    document.getElementById('statTotalFunds').innerText = `Rs. ${totalCollected.toLocaleString()}`;
-    document.getElementById('legendCollectedVal').innerText = `Rs. ${totalCollected.toLocaleString()}`;
-
-    const targetDeficit = Math.max(0, targetAmount - totalCollected);
-    document.getElementById('statPendingDues').innerText = `Rs. ${targetDeficit.toLocaleString()}`;
-    document.getElementById('legendPendingVal').innerText = `Rs. ${targetDeficit.toLocaleString()}`;
-
-    document.getElementById('dashboardProgressPercent').innerText = `${collectionPercent}%`;
-    document.getElementById('statTotalTarget').innerText = selectedEvent
-        ? `Target: Rs. ${targetAmount.toLocaleString()} • ${selectedEvent.title}`
-        : 'Target: Rs. 0';
-    const selectedEventLabel = document.getElementById('dashboardSelectedEventLabel');
-    if (selectedEventLabel) {
-        selectedEventLabel.innerText = selectedEvent
-            ? selectedEvent.title
-            : 'Select an event to view its payment totals';
+    // 1. Update Details Panel
+    const eventTitleEl = document.getElementById('dashboardEventTitle');
+    if (eventTitleEl) eventTitleEl.innerText = selectedEvent.title;
+    
+    const eventDeadlineEl = document.getElementById('dashboardEventDeadline');
+    if (eventDeadlineEl) {
+        eventDeadlineEl.innerText = selectedEvent.deadline 
+            ? `Deadline: ${new Date(selectedEvent.deadline).toLocaleDateString()}` 
+            : 'Deadline: Not set';
     }
 
-    // SVGCircle progress ring dash offset calibration
-    // Radius is 90, Circumference = 2 * PI * R = ~565.48
+    const eventContributionEl = document.getElementById('dashboardEventContribution');
+    const contributionAmt = Number(selectedEvent.studentContribution || 0);
+    if (eventContributionEl) {
+        eventContributionEl.innerText = `Rs. ${contributionAmt.toLocaleString()}`;
+    }
+
+    // Calculate dynamic stats for this specific event
+    let totalCollected = 0;
+    let fullyPaidCount = 0;
+    let partialPaidCount = 0;
+    let participatingCount = MOCK_STUDENTS.length; // usually all students participate
+
+    MOCK_STUDENTS.forEach(mock => {
+        // Calculate paid by this student for this event from transactions
+        const paidFromTxns = state.transactions
+            .filter(t => t.studentIndex === mock.IndexNumber && (t.event_id === selectedEvent.id || t.eventName === selectedEvent.title))
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+        // Check if there is an explicit record in state.students
+        let dbStudent = state.students.find(s => s.IndexNumber === mock.IndexNumber && s.event_id === selectedEvent.id);
+        if (!dbStudent) {
+            dbStudent = state.students.find(s => s.IndexNumber === mock.IndexNumber && !s.event_id);
+        }
+
+        let amountPaid = paidFromTxns;
+        if (dbStudent && dbStudent.event_id === selectedEvent.id) {
+            amountPaid = Number(dbStudent.AmountPaid) || amountPaid;
+        }
+
+        totalCollected += amountPaid;
+
+        if (amountPaid > 0) {
+            if (amountPaid >= contributionAmt && contributionAmt > 0) {
+                fullyPaidCount++;
+            } else {
+                partialPaidCount++;
+            }
+        }
+    });
+
+    const targetAmount = selectedEvent ? selectedEvent.target : 0; // Use explicitly entered Target Fund Budget
+    const collectionPercent = targetAmount > 0 ? Math.min(100, Math.round((totalCollected / targetAmount) * 100)) : 0;
+
+    // Total Funds Collected Card
+    document.getElementById('statTotalFunds').innerText = `Rs. ${totalCollected.toLocaleString()}`;
+    document.getElementById('statTotalTarget').innerText = `Target: Rs. ${targetAmount.toLocaleString()}`;
+
+    // Fully Paid Students Card
+    document.getElementById('statPaidCount').innerText = fullyPaidCount;
+    const contributorRatio = participatingCount > 0 ? Math.round(((fullyPaidCount + partialPaidCount) / participatingCount) * 100) : 0;
+    document.getElementById('statPaidPercent').innerText = `${contributorRatio}% Contributor Ratio`;
+
+    // Participating Students Card
+    document.getElementById('statTotalStudents').innerText = participatingCount;
+    document.getElementById('statContributingCount').innerText = `${partialPaidCount} Making Partial Payments`;
+
+    // Event Dues Pending Card
+    // Event Target Fund Budget Card
+    document.getElementById('statEventTargetBudget').innerText = `Rs. ${targetAmount.toLocaleString()}`;
+
+    // Ring Progress Chart
+    document.getElementById('dashboardProgressPercent').innerText = `${collectionPercent}%`;
+    const selectedEventLabel = document.getElementById('dashboardSelectedEventLabel');
+    if (selectedEventLabel) selectedEventLabel.innerText = selectedEvent.title;
+
     const strokeDashOffset = 565.48 - (collectionPercent / 100) * 565.48;
     document.getElementById('dashboardProgressRing').style.strokeDashoffset = strokeDashOffset;
 
-    // Student counts
-    const totalStudents = state.students.length;
-    document.getElementById('statTotalStudents').innerText = totalStudents;
-
-    const contributingCount = state.students.filter(s => Number(s.AmountPaid || 0) > 0).length;
-    const contributorRatio = totalStudents > 0 ? Math.round((contributingCount / totalStudents) * 100) : 0;
-    document.getElementById('statPaidPercent').innerText = `${contributorRatio}% Contributor Ratio`;
-
-    const paidFullyCount = state.students.filter(s => s.Status === 'Paid').length;
-    document.getElementById('statPaidCount').innerText = `${paidFullyCount} Students Paid Fully`;
-
-    // Active Events
-    const activeEventsCount = state.events.filter(e => e.active).length;
-    document.getElementById('statActiveEvents').innerText = activeEventsCount;
-    document.getElementById('statCompletedEvents').innerText = `${state.events.filter(e => !e.active).length} Completed Events`;
+    // Legend
+    const legendCollectedVal = document.getElementById('legendCollectedVal');
+    if (legendCollectedVal) legendCollectedVal.innerText = `Rs. ${totalCollected.toLocaleString()}`;
+    const legendPendingVal = document.getElementById('legendPendingVal');
+    const localDeficit = Math.max(0, targetAmount - totalCollected);
+    if (legendPendingVal) legendPendingVal.innerText = `Rs. ${localDeficit.toLocaleString()}`;
 }
+
 
 
 
@@ -1760,16 +1878,15 @@ function renderEventsGrid() {
         const card = document.createElement('div');
         card.className = 'event-card';
 
-        // Admins can edit, only ENT Admins can delete
+        // Admins can edit and delete
         const adminControls = isAuthorizedEditor() 
             ? `<div style="position:absolute; top:1rem; right:1rem; z-index:10; display:flex; gap:0.5rem;">
                   <button class="btn btn-glass btn-sm" onclick="openEditEventModal('${event.id}')" title="Edit Event">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
-                  ${isEntAdmin() ? `
                   <button class="btn btn-glass btn-sm text-rose" onclick="deleteEvent('${event.id}')" title="Delete Event Data">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                  </button>` : ''}
+                  </button>
                </div>`
             : '';
 
@@ -1808,8 +1925,8 @@ function renderEventsGrid() {
 }
 
 window.deleteEvent = async function(eventId) {
-    if (!isEntAdmin()) {
-        showToast('Only ENT Admins are authorized to delete events!', 'error');
+    if (!isAuthorizedEditor()) {
+        showToast('Only Admins are authorized to delete events!', 'error');
         return;
     }
 
@@ -1887,24 +2004,57 @@ window.deleteEvent = async function(eventId) {
 // 3. STUDENT REGISTRY CONTROLLER
 function applyStudentFilters() {
     const query = document.getElementById('searchStudentInput').value.toLowerCase().trim();
-    const status = document.getElementById('filterStatusSelect').value;
-    const selectedEvent = (document.getElementById('filterEventSelect') && document.getElementById('filterEventSelect').value) || 'All';
+    const eventSelectEl = document.getElementById('filterEventSelect');
+    const selectedEventId = eventSelectEl ? eventSelectEl.value : null;
 
-    filteredStudentsList = state.students.filter(student => {
-        // Query text matches index number or student name
-        const matchQuery = student.FullName.toLowerCase().includes(query) || student.IndexNumber.toLowerCase().includes(query);
-        // Payment status match
-        const matchStatus = (status === 'All') || (student.Status === status);
-        // Event filter: if specific event selected, include only students who have payments for that event
-        let matchEvent = true;
-        if (selectedEvent && selectedEvent !== 'All') {
-            matchEvent = state.transactions.some(t => t.studentIndex === student.IndexNumber && t.eventName === selectedEvent);
+    const selectedEvent = state.events.find(e => e.id === selectedEventId) || state.events[0];
+    const targetAmount = selectedEvent ? selectedEvent.target : 0;
+    const studentContributionAmount = selectedEvent ? (selectedEvent.studentContribution || 0) : 0;
+
+    // Generate per-event student registry dynamically
+    filteredStudentsList = MOCK_STUDENTS.map(mock => {
+        // Find existing DB record for this specific student and event
+        let dbStudent = state.students.find(s => s.IndexNumber === mock.IndexNumber && s.event_id === selectedEventId);
+        
+        // If DB record lacks event_id but matches index, we use it as fallback for legacy data
+        if (!dbStudent) {
+            dbStudent = state.students.find(s => s.IndexNumber === mock.IndexNumber && !s.event_id);
         }
 
-        return matchQuery && matchStatus && matchEvent;
+        // Calculate Paid from transactions strictly for this event
+        const paidFromTxns = state.transactions
+            .filter(t => t.studentIndex === mock.IndexNumber && (t.event_id === selectedEventId || t.eventName === (selectedEvent?.title)))
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+        let amountPaid = paidFromTxns;
+        let amountOwed = Math.max(0, studentContributionAmount - paidFromTxns);
+        
+        // Use explicitly set values if they exist in a DB record that matches the event
+        if (dbStudent && dbStudent.event_id === selectedEventId) {
+            amountPaid = Number(dbStudent.AmountPaid) || amountPaid;
+            // AmountOwed is dynamically calculated to always reflect the event's contribution budget
+            amountOwed = Math.max(0, studentContributionAmount - amountPaid);
+        }
+
+        let derivedStatus = amountOwed <= 0 && amountPaid > 0 ? 'Paid' : (amountPaid > 0 ? 'Partially Paid' : 'Unpaid');
+        if (dbStudent && dbStudent.event_id === selectedEventId && dbStudent.Status) {
+            derivedStatus = dbStudent.Status;
+        }
+
+        return {
+            ...mock,
+            id: dbStudent ? dbStudent.id : null,
+            AmountPaid: amountPaid,
+            AmountOwed: amountOwed,
+            TotalRequired: studentContributionAmount,
+            Status: derivedStatus,
+            event_id: selectedEventId
+        };
+    }).filter(student => {
+        return student.FullName.toLowerCase().includes(query) || student.IndexNumber.toLowerCase().includes(query);
     });
 
-    currentStudentsPage = 1; // Reset to page 1 on filter
+    currentStudentsPage = 1;
     renderStudentsTable();
 }
 
@@ -1933,44 +2083,32 @@ function renderStudentsTable() {
     }
 
     const pageStudents = filteredStudentsList.slice(0); // all filtered students
+    const fragment = document.createDocumentFragment();
 
     pageStudents.forEach(student => {
         const tr = document.createElement('tr');
         
-        let statusBadgeClass = 'badge-unpaid';
-        if (student.Status === 'Paid') statusBadgeClass = 'badge-paid';
-        else if (student.Status === 'Partially Paid') statusBadgeClass = 'badge-pending';
         // Show editable inputs for paid/owed/status only to authorized editors
         const isEditor = isAuthorizedEditor();
         const paidVal = (Number(student.AmountPaid) || 0);
-        const owedVal = (Number(student.AmountOwed) || 0);
+        const remainingVal = (Number(student.AmountOwed) || 0);
+        const totalOwedVal = (Number(student.TotalRequired) || 0);
 
         const paidCell = isEditor
             ? `<td><input type="number" min="0" step="0.01" class="student-paid-input" data-index="${student.IndexNumber}" value="${paidVal}" onchange="inlineUpdateStudent('${student.IndexNumber}','AmountPaid', this.value)"></td>`
             : `<td class="text-emerald font-bold">Rs. ${paidVal.toLocaleString()}</td>`;
 
-        const owedCell = isEditor
-            ? `<td><input type="number" min="0" step="0.01" class="student-owed-input" data-index="${student.IndexNumber}" value="${owedVal}" onchange="inlineUpdateStudent('${student.IndexNumber}','AmountOwed', this.value)"></td>`
-            : `<td class="text-muted">Rs. ${owedVal.toLocaleString()}</td>`;
-
-        const statusCell = isEditor
-            ? `<td>
-                    <select onchange="inlineUpdateStudent('${student.IndexNumber}','Status', this.value)" class="form-control select-dark">
-                        <option value="Unpaid" ${ (student.Status || 'Unpaid') === 'Unpaid' ? 'selected' : '' }>Unpaid</option>
-                        <option value="Partially Paid" ${ (student.Status || '') === 'Partially Paid' ? 'selected' : '' }>Partially Paid</option>
-                        <option value="Paid" ${ (student.Status || '') === 'Paid' ? 'selected' : '' }>Paid</option>
-                    </select>
-               </td>`
-            : `<td><span class="badge ${statusBadgeClass}">${student.Status || 'Unpaid'}</span></td>`;
+        const totalOwedCell = `<td class="text-muted">Rs. ${totalOwedVal.toLocaleString()}</td>`;
+        const remainingCell = `<td class="text-amber font-bold">Rs. ${remainingVal.toLocaleString()}</td>`;
 
         tr.innerHTML = `
             <td class="font-bold text-cyan">${student.IndexNumber}</td>
             <td class="font-bold text-muted">${student.RegNo || ''}</td>
             <td class="font-bold text-white">${student.FullName}</td>
             ${paidCell}
-            ${owedCell}
+            ${totalOwedCell}
+            ${remainingCell}
             <td>${student.Department}</td>
-            ${statusCell}
         `;
         tbody.appendChild(tr);
     });
@@ -2040,6 +2178,83 @@ function renderReportCharts() {
 /* -------------------------------------------------------------
  * MONTHLY FUND CONTROLLER
  * ------------------------------------------------------------- */
+window.renderMonthlyDashboardStats = function() {
+    const yearSelect = document.getElementById('monthlyDashboardYearSelect');
+    const selectedYear = yearSelect ? yearSelect.value : new Date().getFullYear().toString();
+
+    let totalCollectedThisYear = 0;
+    let perfectContributors = 0;
+    const monthlyTotals = {};
+    MONTHS.forEach(m => monthlyTotals[m] = 0);
+
+    const participatingStudents = state.students.length || MOCK_STUDENTS.length;
+    const expectedTotal = participatingStudents * MONTHLY_FEE * 12;
+
+    state.students.forEach(student => {
+        if (!student.monthlyPayments || !student.monthlyPayments[selectedYear]) return;
+
+        let monthsPaidForYear = 0;
+        MONTHS.forEach(month => {
+            if (student.monthlyPayments[selectedYear][month]) {
+                totalCollectedThisYear += MONTHLY_FEE;
+                monthsPaidForYear++;
+                monthlyTotals[month] += MONTHLY_FEE;
+            }
+        });
+
+        if (monthsPaidForYear === 12) {
+            perfectContributors++;
+        }
+    });
+
+    // Update Metric Cards
+    const elCollected = document.getElementById('statMonthlyCollected');
+    if (elCollected) elCollected.innerText = `Rs. ${totalCollectedThisYear.toLocaleString()}`;
+
+    const elExpected = document.getElementById('statMonthlyExpected');
+    if (elExpected) elExpected.innerText = `Rs. ${expectedTotal.toLocaleString()}`;
+
+    const elPerfect = document.getElementById('statMonthlyPerfect');
+    if (elPerfect) elPerfect.innerText = perfectContributors;
+
+    // Expenses Calculation
+    let totalExpensesThisYear = 0;
+    if (state.expenses) {
+        state.expenses.forEach(exp => {
+            const expYear = exp.date ? exp.date.split('-')[0] : '';
+            if (expYear === selectedYear) {
+                totalExpensesThisYear += exp.amount;
+            }
+        });
+    }
+
+    const remainingBalance = totalCollectedThisYear - totalExpensesThisYear;
+
+    const elExpenses = document.getElementById('statMonthlyExpenses');
+    if (elExpenses) elExpenses.innerText = `Rs. ${totalExpensesThisYear.toLocaleString()}`;
+
+    const elBalance = document.getElementById('statMonthlyBalance');
+    if (elBalance) elBalance.innerText = `Rs. ${remainingBalance.toLocaleString()}`;
+
+    // Update Breakdown Grid
+    const breakdownGrid = document.getElementById('monthlyBreakdownGrid');
+    if (breakdownGrid) {
+        breakdownGrid.innerHTML = MONTHS.map(month => {
+            const mTotal = monthlyTotals[month];
+            const percent = expectedTotal > 0 ? (mTotal / (participatingStudents * MONTHLY_FEE)) * 100 : 0;
+            const isComplete = percent >= 100;
+            
+            return `
+                <div class="content-card" style="padding: 1rem; text-align: center; border: 1px solid ${isComplete ? 'var(--emerald-glow)' : 'var(--border-color)'};">
+                    <h4 class="text-sm text-muted margin-bottom-sm">${month}</h4>
+                    <div class="text-md font-bold ${isComplete ? 'text-emerald' : 'text-white'}">Rs. ${mTotal.toLocaleString()}</div>
+                    <div class="text-xs text-muted margin-top-xs">${Math.round(percent)}% Collected</div>
+                </div>
+            `;
+        }).join('');
+    }
+}
+
 function renderMonthlyView() {
     const tableBody = document.getElementById('monthlyTableBody');
     const headerRow = document.getElementById('monthlyHeaderRow');
@@ -2065,13 +2280,15 @@ function renderMonthlyView() {
     );
 
     tableBody.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+
     filtered.forEach(student => {
         const tr = document.createElement('tr');
         
         let html = `
             <td style="text-align: left; position: sticky; left: 0; background: var(--bg-card); z-index: 10;">
                 <div class="font-bold text-white">${student.FullName}</div>
-                <div class="text-xs text-muted">${student.IndexNumber} • ${student.Department}</div>
+                <div class="text-xs text-muted">${student.IndexNumber} &nbsp; ${student.Department}</div>
             </td>
         `;
 
@@ -2086,8 +2303,10 @@ function renderMonthlyView() {
         });
 
         tr.innerHTML = html;
-        tableBody.appendChild(tr);
+        fragment.appendChild(tr);
     });
+
+    tableBody.appendChild(fragment);
 }
 
 function toggleMonthlyPayment(indexNumber, month, year) {
@@ -2139,6 +2358,7 @@ function toggleMonthlyPayment(indexNumber, month, year) {
         }
         renderMonthlyView();
         renderDashboardStats();
+        if (typeof renderMonthlyDashboardStats === 'function') renderMonthlyDashboardStats();
         showToast(`${student.FullName} - ${month} ${year} marked as ${student.monthlyPayments[year][month] ? 'Paid' : 'Unpaid'}`, 'success');
     }
 }
@@ -2321,9 +2541,37 @@ function queryStudentStatus() {
         else if (student.Status === 'Partially Paid') badge.classList.add('badge-pending');
         else badge.classList.add('badge-unpaid');
 
-        document.getElementById('qStudentPaid').innerText = `Rs. ${(Number(student.AmountPaid) || 0).toLocaleString()}`;
-        document.getElementById('qStudentOwed').innerText = `Rs. ${(Number(student.AmountOwed) || 0).toLocaleString()}`;
-
+        const breakdownContainer = document.getElementById('qStudentEventBreakdown');
+        if (breakdownContainer) {
+            const fragment = document.createDocumentFragment();
+            const payments = state.transactions.filter(t => t.studentIndex === student.IndexNumber);
+            
+            state.events.forEach(event => {
+                const required = Number(event.studentContribution) || 0;
+                const eventTxns = payments.filter(t => t.event_id === event.id || t.eventName === event.title);
+                const paidForEvent = eventTxns.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+                const owedForEvent = Math.max(0, required - paidForEvent);
+                
+                const div = document.createElement('div');
+                div.className = 'res-item';
+                div.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; align-items:center;">
+                        <span class="res-lbl" style="margin-bottom:0; color:var(--text-white); font-weight:600;">${event.title}</span>
+                        <span class="badge ${owedForEvent <= 0 && required > 0 ? 'badge-paid' : (paidForEvent > 0 ? 'badge-pending' : 'badge-unpaid')}">${owedForEvent <= 0 && required > 0 ? 'Fully Paid' : (paidForEvent > 0 ? 'Partially Paid' : 'Unpaid')}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-top:8px;">
+                        <span class="text-muted">Target: Rs. ${required.toLocaleString()}</span>
+                        <span>
+                            <span class="text-emerald font-bold" style="margin-right: 1rem;">Paid: Rs. ${paidForEvent.toLocaleString()}</span>
+                            <span class="text-amber font-bold">Owed: Rs. ${owedForEvent.toLocaleString()}</span>
+                        </span>
+                    </div>
+                `;
+                fragment.appendChild(div);
+            });
+            breakdownContainer.innerHTML = '';
+            breakdownContainer.appendChild(fragment);
+        }
         // Personal Timelines
         const timeline = document.getElementById('qStudentTimeline');
         timeline.innerHTML = '';
@@ -2405,9 +2653,9 @@ window.openEditStudent = function(indexNumber) {
         showToast('Only authorized administrators may edit student records.', 'error');
         return;
     }
-    const student = state.students.find(s => s.IndexNumber === indexNumber);
+    const student = filteredStudentsList.find(s => s.IndexNumber === indexNumber);
     if (!student) {
-        showToast('Student record not found.', 'error');
+        showToast('Student record not found in current view.', 'error');
         return;
     }
 
@@ -2580,9 +2828,11 @@ async function handleEditStudent(e) {
     const owed = parseFloat(document.getElementById('editAmountOwed').value) || 0;
     const status = document.getElementById('editStatusSelect').value;
 
-    const student = state.students.find(s => s.IndexNumber === idx);
-    if (!student) {
-        showToast('Student not found.', 'error');
+    const eventSelectEl = document.getElementById('filterEventSelect');
+    const selectedEventId = eventSelectEl ? eventSelectEl.value : null;
+
+    if (!selectedEventId) {
+        showToast('No event selected.', 'error');
         return;
     }
 
@@ -2592,14 +2842,56 @@ async function handleEditStudent(e) {
         return;
     }
 
-    student.AmountPaid = paid;
-    student.AmountOwed = owed;
-    student.Status = status;
+    let student = state.students.find(s => s.IndexNumber === idx && s.event_id === selectedEventId);
+    
+    if (!student) {
+        const mockStudent = MOCK_STUDENTS.find(m => m.IndexNumber === idx);
+        if (!mockStudent) return;
+        student = {
+            ...mockStudent,
+            AmountPaid: paid,
+            AmountOwed: owed,
+            Status: status,
+            event_id: selectedEventId,
+            monthlyPayments: createEmptyMonthlyPayments()
+        };
+        if (useSupabase()) {
+            const result = await db.create('students', {
+                event_id: selectedEventId,
+                index_number: student.IndexNumber,
+                full_name: student.FullName,
+                reg_no: student.RegNo,
+                department: student.Department,
+                amount_paid: paid,
+                amount_owed: owed,
+                status: status,
+                monthly_payments: JSON.stringify(student.monthlyPayments)
+            });
+            const created = Array.isArray(result) ? result[0] : result;
+            if (created && !created.error) {
+                student.id = created.id;
+            }
+        }
+        state.students.push(student);
+    } else {
+        student.AmountPaid = paid;
+        student.AmountOwed = owed;
+        student.Status = status;
 
-    await persistStudent(student);
-    renderApp();
+        if (useSupabase() && student.id) {
+            await db.update('students', student.id, {
+                amount_paid: student.AmountPaid,
+                amount_owed: student.AmountOwed,
+                status: student.Status
+            });
+        }
+    }
+
+    saveToLocalStorage();
+    applyStudentFilters();
+    renderDashboardStats();
     closeAllModals();
-    showToast(`Student ${student.IndexNumber} updated.`, 'success');
+    showToast(`Student ${idx} updated for this event.`, 'success');
 }
 
 // Inline update handler used by table inputs/selects
@@ -2607,15 +2899,53 @@ window.inlineUpdateStudent = async function(indexNumber, field, value) {
     // Only authorized admins may update
     if (!isAuthorizedEditor()) {
         showToast('Only authorized administrators may update this field.', 'error');
-        // Optionally re-render to reset input
         renderStudentsTable();
         return;
     }
 
-    const student = state.students.find(s => s.IndexNumber === indexNumber);
-    if (!student) {
-        showToast('Student not found.', 'error');
+    const eventSelectEl = document.getElementById('filterEventSelect');
+    const selectedEventId = eventSelectEl ? eventSelectEl.value : null;
+
+    if (!selectedEventId) {
+        showToast('No event selected.', 'error');
         return;
+    }
+
+    // Find if a DB record exists for this event and student
+    let student = state.students.find(s => s.IndexNumber === indexNumber && s.event_id === selectedEventId);
+    
+    // If not, we create one and push to state
+    if (!student) {
+        const mockStudent = MOCK_STUDENTS.find(m => m.IndexNumber === indexNumber);
+        if (!mockStudent) return;
+        
+        student = {
+            ...mockStudent,
+            AmountPaid: 0,
+            AmountOwed: 0,
+            Status: 'Unpaid',
+            event_id: selectedEventId,
+            monthlyPayments: createEmptyMonthlyPayments()
+        };
+        
+        if (useSupabase()) {
+            const result = await db.create('students', {
+                event_id: selectedEventId,
+                index_number: student.IndexNumber,
+                full_name: student.FullName,
+                reg_no: student.RegNo,
+                department: student.Department,
+                amount_paid: 0,
+                amount_owed: 0,
+                status: 'Unpaid',
+                monthly_payments: JSON.stringify(student.monthlyPayments)
+            });
+            const created = Array.isArray(result) ? result[0] : result;
+            if (created && !created.error) {
+                student.id = created.id;
+            }
+        }
+        state.students.push(student);
     }
 
     if (field === 'AmountPaid' || field === 'AmountOwed') {
@@ -2627,8 +2957,17 @@ window.inlineUpdateStudent = async function(indexNumber, field, value) {
         student[field] = value;
     }
 
-    await persistStudent(student);
-    renderApp();
+    if (useSupabase() && student.id) {
+        await db.update('students', student.id, {
+            amount_paid: student.AmountPaid,
+            amount_owed: student.AmountOwed,
+            status: student.Status
+        });
+    }
+
+    saveToLocalStorage();
+    applyStudentFilters();
+    renderDashboardStats();
     showToast(`Updated ${indexNumber} ${field}.`, 'success');
 };
 
@@ -2699,21 +3038,51 @@ async function handleAddPayment() {
     // Push to Ledger
     state.transactions.push(newTxn);
 
-    // Update Student Collections
-    student.AmountPaid = Number(student.AmountPaid) || 0;
-    student.AmountOwed = Number(student.AmountOwed) || 0;
+    // Update Student Collections for this specific event
+    let eventStudent = state.students.find(s => s.IndexNumber === student.IndexNumber && s.event_id === event.id);
+    
+    if (!eventStudent) {
+        // Create an event-specific record
+        eventStudent = {
+            ...student,
+            event_id: event.id,
+            AmountPaid: 0,
+            AmountOwed: event.target
+        };
+        if (useSupabase()) {
+            const result = await db.create('students', {
+                event_id: event.id,
+                index_number: eventStudent.IndexNumber,
+                full_name: eventStudent.FullName,
+                reg_no: eventStudent.RegNo,
+                department: eventStudent.Department,
+                amount_paid: 0,
+                amount_owed: event.target,
+                status: 'Unpaid',
+                monthly_payments: '{}'
+            });
+            const created = Array.isArray(result) ? result[0] : result;
+            if (created && !created.error) {
+                eventStudent.id = created.id;
+            }
+        }
+        state.students.push(eventStudent);
+    }
 
-    student.AmountPaid += amt;
-    student.AmountOwed = Math.max(0, student.AmountOwed - amt);
+    eventStudent.AmountPaid = Number(eventStudent.AmountPaid) || 0;
+    eventStudent.AmountOwed = Number(eventStudent.AmountOwed) || 0;
+
+    eventStudent.AmountPaid += amt;
+    eventStudent.AmountOwed = Math.max(0, eventStudent.AmountOwed - amt);
 
     // Status update
-    if (student.AmountOwed <= 0 && student.AmountPaid > 0) {
-        student.Status = 'Paid';
-        student.AmountOwed = 0;
-    } else if (student.AmountPaid > 0) {
-        student.Status = 'Partially Paid';
+    if (eventStudent.AmountOwed <= 0 && eventStudent.AmountPaid > 0) {
+        eventStudent.Status = 'Paid';
+        eventStudent.AmountOwed = 0;
+    } else if (eventStudent.AmountPaid > 0) {
+        eventStudent.Status = 'Partially Paid';
     } else {
-        student.Status = 'Unpaid';
+        eventStudent.Status = 'Unpaid';
     }
 
     // Increment Event Collections
@@ -2721,7 +3090,7 @@ async function handleAddPayment() {
 
     if (useSupabase()) {
         const result = await db.create('transactions', {
-            student_id: student.id,
+            student_id: eventStudent.id || student.id,
             event_id: event.id,
             date: formattedDate,
             method: method,
@@ -2731,15 +3100,17 @@ async function handleAddPayment() {
         const created = Array.isArray(result) ? result[0] : result;
         if (created && !created.error) {
             newTxn.id = created.id;
-            newTxn.student_id = student.id;
+            newTxn.student_id = eventStudent.id || student.id;
             newTxn.event_id = event.id;
         }
 
-        await db.update('students', student.id, {
-            amount_paid: student.AmountPaid,
-            amount_owed: student.AmountOwed,
-            status: student.Status
-        });
+        if (eventStudent.id) {
+            await db.update('students', eventStudent.id, {
+                amount_paid: eventStudent.AmountPaid,
+                amount_owed: eventStudent.AmountOwed,
+                status: eventStudent.Status
+            });
+        }
 
         await db.update('events', event.id, {
             collected: event.collected
@@ -2763,7 +3134,11 @@ async function handleNewEvent() {
     const title = document.getElementById('eventTitle').value.trim();
     const target = parseFloat(document.getElementById('eventTarget').value);
     const deadline = document.getElementById('eventDeadline').value;
-    const accentColor = document.getElementById('eventColorSelect').value;
+    const contributionPerStudent = parseFloat(document.getElementById('eventStudentContribution').value);
+
+    // Default accent colors for random assignment since we removed the user choice
+    const colors = ['var(--cyan-glow)', 'var(--emerald-glow)', 'var(--indigo-glow)', 'var(--amber-glow)', 'var(--rose-glow)'];
+    const accentColor = colors[Math.floor(Math.random() * colors.length)];
 
     if (!title || isNaN(target) || target <= 0 || !deadline) {
         showToast('Please fulfill all event configurations correctly.', 'warning');
@@ -2777,21 +3152,26 @@ async function handleNewEvent() {
         collected: 0,
         deadline: deadline,
         color: accentColor,
-        active: true
+        active: true,
+        studentContribution: (!isNaN(contributionPerStudent) ? contributionPerStudent : 0)
     };
+
+    const encodedColor = accentColor + '|' + (!isNaN(contributionPerStudent) ? contributionPerStudent : 0);
 
     if (useSupabase()) {
         const result = await db.create('events', {
             title,
             target,
             deadline,
-            color: accentColor,
+            color: encodedColor,
             collected: 0,
             active: true
         });
         const created = Array.isArray(result) ? result[0] : result;
         if (created && !created.error) {
             newEvent.id = created.id;
+        } else {
+            console.error("Failed to save event to Supabase:", created?.error);
         }
     }
 
@@ -2806,9 +3186,36 @@ async function handleNewEvent() {
     // Reset fields
     document.getElementById('eventTitle').value = '';
     document.getElementById('eventTarget').value = '';
+    document.getElementById('eventStudentContribution').value = '';
     document.getElementById('eventDeadline').value = '';
 
     showToast(`New Milestone "${title}" published successfully!`, 'success');
+    
+    // Apply contribution to all students if valid (done asynchronously to prevent UI freezing)
+    if (!isNaN(contributionPerStudent) && contributionPerStudent > 0) {
+        showToast('Updating student records in background...', 'info');
+        setTimeout(async () => {
+            for (const student of state.students) {
+                student.AmountOwed = (Number(student.AmountOwed) || 0) + contributionPerStudent;
+                
+                // Recalculate status if they were fully paid before, they are now partially paid or unpaid
+                if (student.AmountPaid === 0) {
+                    student.Status = 'Unpaid';
+                } else if (student.AmountOwed > 0) {
+                    student.Status = 'Partially Paid';
+                } else {
+                    student.Status = 'Paid';
+                }
+                
+                if (useSupabase() && student.id) {
+                    await persistStudent(student);
+                }
+            }
+            saveToLocalStorage();
+            renderApp();
+            showToast('Student records successfully updated!', 'success');
+        }, 100);
+    }
 }
 
 // VOID / DELETE TRANSACTION (ADMIN HELP)
@@ -3066,7 +3473,7 @@ window.openEditEventModal = function(id) {
     document.getElementById('editEventTitle').value = e.title;
     document.getElementById('editEventTarget').value = e.target;
     document.getElementById('editEventDeadline').value = e.deadline;
-    document.getElementById('editEventColorSelect').value = e.color;
+    document.getElementById('editEventStudentContribution').value = e.studentContribution || 0;
     openModal('modalEditEvent');
 };
 
@@ -3076,10 +3483,10 @@ async function handleEditEvent(e) {
     const title = document.getElementById('editEventTitle').value;
     const target = parseFloat(document.getElementById('editEventTarget').value);
     const deadline = document.getElementById('editEventDeadline').value;
-    const color = document.getElementById('editEventColorSelect').value;
+    const studentContribution = parseFloat(document.getElementById('editEventStudentContribution').value) || 0;
 
     if (useSupabase()) {
-        const result = await db.update('events', id, { title, target, deadline, color });
+        const result = await db.update('events', id, { title, target, deadline, student_contribution: studentContribution });
         if (!result.error) {
             showToast('Event updated successfully.', 'success');
             closeAllModals();
@@ -3090,7 +3497,7 @@ async function handleEditEvent(e) {
                     title,
                     target,
                     deadline,
-                    color
+                    studentContribution
                 };
             }
             saveToLocalStorage();
@@ -3104,11 +3511,127 @@ async function handleEditEvent(e) {
         ev.title = title;
         ev.target = target;
         ev.deadline = deadline;
-        ev.color = color;
+        ev.studentContribution = studentContribution;
         saveToLocalStorage();
         renderApp();
         closeAllModals();
         showToast('Event updated locally.', 'success');
+    }
+}
+
+/* -------------------------------------------------------------
+ * EXPENSES MANAGEMENT
+ * ------------------------------------------------------------- */
+async function handleNewExpense(e) {
+    e.preventDefault();
+    if (!isAuthorizedEditor()) {
+        showToast('Unauthorized access!', 'error');
+        return;
+    }
+
+    const date = document.getElementById('expenseDate').value;
+    const title = document.getElementById('expenseTitle').value.trim();
+    const amount = parseFloat(document.getElementById('expenseAmount').value);
+    const description = document.getElementById('expenseDescription').value.trim();
+
+    if (!date || !title || isNaN(amount) || amount <= 0) {
+        showToast('Please fill all required expense fields correctly.', 'warning');
+        return;
+    }
+
+    const newExpense = {
+        id: 'exp_' + Date.now(),
+        date,
+        title,
+        amount,
+        description,
+        created_at: new Date().toISOString()
+    };
+
+    if (useSupabase()) {
+        const result = await db.create('expenses', {
+            date,
+            title,
+            amount,
+            description
+        });
+        const created = Array.isArray(result) ? result[0] : result;
+        if (created && !created.error) {
+            newExpense.id = created.id;
+        } else {
+            console.error("Failed to save expense to DB, saving locally", created?.error);
+        }
+    }
+
+    state.expenses.push(newExpense);
+    saveToLocalStorage();
+
+    // Auto-switch the year dropdown so the new expense is immediately visible
+    const expYear = date.split('-')[0];
+    const yearSelect = document.getElementById('expenseYearSelect');
+    if (yearSelect && [...yearSelect.options].some(opt => opt.value === expYear)) {
+        yearSelect.value = expYear;
+    }
+
+    renderApp();
+    
+    // Reset form
+    e.target.reset();
+    showToast(`Expense "${title}" recorded successfully.`, 'success');
+}
+
+function renderExpensesTable() {
+    const tbody = document.getElementById('expensesTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    
+    const yearSelect = document.getElementById('expenseYearSelect');
+    const selectedYear = yearSelect ? yearSelect.value : new Date().getFullYear().toString();
+
+    let filteredExpenses = state.expenses.filter(exp => {
+        const expYear = exp.date ? exp.date.split('-')[0] : '';
+        return expYear === selectedYear;
+    });
+
+    const sortedExpenses = filteredExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (sortedExpenses.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No expenses recorded for this selection.</td></tr>';
+        return;
+    }
+
+    const isAdmin = state.currentUser !== null;
+
+    tbody.innerHTML = sortedExpenses.map(exp => `
+        <tr>
+            <td>${exp.date}</td>
+            <td><strong>${exp.title}</strong></td>
+            <td class="text-muted">${exp.description || '-'}</td>
+            <td class="text-cyan font-bold">Rs. ${exp.amount.toLocaleString()}</td>
+            <td class="admin-only ${isAdmin ? '' : 'hidden'}">
+                <button class="btn btn-glass text-cyan" onclick="deleteExpense('${exp.id}')" title="Delete Expense">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+window.deleteExpense = async function(id) {
+    if (!isAuthorizedEditor()) return;
+
+    if (confirm('Are you sure you want to delete this expense record?')) {
+        if (useSupabase()) {
+            await db.delete('expenses', id);
+        }
+        state.expenses = state.expenses.filter(e => e.id !== id);
+        saveToLocalStorage();
+        renderApp();
+        showToast('Expense deleted.', 'info');
     }
 }
 

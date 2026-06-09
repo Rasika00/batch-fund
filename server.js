@@ -26,23 +26,26 @@ const db = new Database(dbPath);
 
 // Create tables
 db.exec(`
-CREATE TABLE IF NOT EXISTS students (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  index_number TEXT UNIQUE,
-  full_name TEXT,
-  reg_no TEXT,
-  department TEXT,
-  amount_paid REAL DEFAULT 0,
-  amount_owed REAL DEFAULT 0,
-  status TEXT DEFAULT 'Unpaid'
-);
-
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT,
   target INTEGER DEFAULT 0,
   deadline TEXT,
   color TEXT
+);
+
+CREATE TABLE IF NOT EXISTS students (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id INTEGER,
+  index_number TEXT,
+  full_name TEXT,
+  reg_no TEXT,
+  department TEXT,
+  amount_paid REAL DEFAULT 0,
+  amount_owed REAL DEFAULT 0,
+  status TEXT DEFAULT 'Unpaid',
+  UNIQUE(event_id, index_number),
+  FOREIGN KEY(event_id) REFERENCES events(id)
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
@@ -89,11 +92,18 @@ function getQuery(sql, params=[]) {
 }
 
 // Students API
-app.get('/api/students', (req, res) => res.json(allQuery('SELECT * FROM students ORDER BY id DESC')));
+app.get('/api/students', (req, res) => {
+  const event_id = req.query.event_id;
+  if (event_id) {
+    res.json(allQuery('SELECT * FROM students WHERE event_id = ? ORDER BY id DESC', [event_id]));
+  } else {
+    res.json(allQuery('SELECT * FROM students ORDER BY id DESC'));
+  }
+});
 app.post('/api/students', (req,res)=>{
-  const { index_number, full_name, reg_no, department, amount_paid, amount_owed, status } = req.body;
+  const { event_id, index_number, full_name, reg_no, department, amount_paid, amount_owed, status } = req.body;
   try {
-    const info = runQuery(`INSERT INTO students (index_number, full_name, reg_no, department, amount_paid, amount_owed, status) VALUES (?,?,?,?,?,?,?)`, [index_number, full_name, reg_no, department, amount_paid||0, amount_owed||0, status||'Unpaid']);
+    const info = runQuery(`INSERT INTO students (event_id, index_number, full_name, reg_no, department, amount_paid, amount_owed, status) VALUES (?,?,?,?,?,?,?,?)`, [event_id||null, index_number, full_name, reg_no, department, amount_paid||0, amount_owed||0, status||'Unpaid']);
     res.json(getQuery('SELECT * FROM students WHERE id = ?', [info.lastInsertRowid]));
   } catch(err){ res.status(400).json({ error: String(err) }); }
 });

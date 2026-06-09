@@ -44,7 +44,7 @@
     --text-amber: #ffb142;
     --text-rose: #ff6b81;
 
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     --font-outfit: 'Outfit', 'Inter', sans-serif;
     --font-inter: 'Inter', sans-serif;
 }
@@ -1219,21 +1219,6 @@ h6 {
     box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.15);
 }
 
-.select-dark {
-    background: #06202B;
-    color: var(--text-white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    cursor: pointer;
-}
-
-.select-dark option {
-    background: #06202B;
-    color: var(--text-white);
-}
-
 .input-helper {
     font-size: 0.7rem;
     color: var(--text-muted);
@@ -2105,4 +2090,8 @@ img {
 .app-layout, .sidebar, .gate-overlay {
     height: 100vh;
     height: calc(var(--vh, 1vh) * 100);
-}
+}s e l e c t . f o r m - c o n t r o l   o p t i o n   {   b a c k g r o u n d :   # 0 6 2 0 2 B ;   c o l o r :   v a r ( - - t e x t - w h i t e ) ;   }  
+ 
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.view-panel:not(.hidden) { animation: fadeIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; }
+

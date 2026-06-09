@@ -2,27 +2,6 @@
 -- Run this in your Supabase SQL Editor (Dashboard > SQL Editor > New Query)
 
 -- =====================================================
--- STUDENTS TABLE
--- =====================================================
-CREATE TABLE IF NOT EXISTS students (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    index_number TEXT UNIQUE NOT NULL,
-    full_name TEXT NOT NULL,
-    reg_no TEXT,
-    department TEXT,
-    amount_paid REAL DEFAULT 0,
-    amount_owed REAL DEFAULT 0,
-    status TEXT DEFAULT 'Unpaid',
-    monthly_payments JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create index for faster lookups
-CREATE INDEX IF NOT EXISTS idx_students_index ON students(index_number);
-CREATE INDEX IF NOT EXISTS idx_students_status ON students(status);
-
--- =====================================================
 -- EVENTS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS events (
@@ -34,6 +13,25 @@ CREATE TABLE IF NOT EXISTS events (
     collected REAL DEFAULT 0,
     active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =====================================================
+-- STUDENTS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS students (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+    index_number TEXT NOT NULL,
+    full_name TEXT NOT NULL,
+    reg_no TEXT,
+    department TEXT,
+    amount_paid REAL DEFAULT 0,
+    amount_owed REAL DEFAULT 0,
+    status TEXT DEFAULT 'Unpaid',
+    monthly_payments JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(event_id, index_number)
 );
 
 -- =====================================================

@@ -45,6 +45,9 @@ class Database {
             if (!response.ok) {
                 const error = await response.text();
                 console.error(`DB Error [${method} ${table}]:`, error);
+                if (method !== 'GET') {
+                    alert(`Database Error while saving to ${table}:\n${error}\n\nPlease check your database schema or RLS policies in Supabase.`);
+                }
                 return { error };
             }
 
@@ -54,6 +57,9 @@ class Database {
             return response.json();
         } catch (err) {
             console.error(`DB Error [${method} ${table}]:`, err);
+            if (method !== 'GET') {
+                alert(`Network/Database Error:\n${err.message}`);
+            }
             return { error: err.message };
         }
     }

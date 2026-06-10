@@ -901,6 +901,7 @@ function mapDbStudent(s) {
         AmountPaid: s.amount_paid || 0,
         AmountOwed: s.amount_owed || 0,
         Status: s.status || 'Unpaid',
+        event_id: s.event_id || null,
         monthlyPayments: parseMonthlyPayments(s.monthly_payments)
     };
 }
@@ -932,49 +933,53 @@ function buildStudentRowsForSeed(students = MOCK_STUDENTS) {
 }
 
 function mergeStudentsWithRoster(dbStudents = []) {
-    const dbMap = new Map(dbStudents.map(s => [s.index_number, s]));
+    const merged = dbStudents.map(mapDbStudent);
+    const dbIndexNumbers = new Set(merged.map(s => s.IndexNumber));
 
-    return MOCK_STUDENTS.map(s => {
-        const row = dbMap.get(s.IndexNumber);
-        if (row) return mapDbStudent(row);
-
-        return {
-            ...s,
-            AmountPaid: 0,
-            AmountOwed: 0,
-            Status: 'Unpaid',
-            monthlyPayments: createEmptyMonthlyPayments()
-        };
+    MOCK_STUDENTS.forEach(s => {
+        if (!dbIndexNumbers.has(s.IndexNumber)) {
+            merged.push({
+                ...s,
+                AmountPaid: 0,
+                AmountOwed: 0,
+                Status: 'Unpaid',
+                event_id: null,
+                monthlyPayments: createEmptyMonthlyPayments()
+            });
+        }
     });
+
+    return merged;
 }
 
 function applyLocalStudentFallback() {
+    let localStudents = [];
     const storedStudents = localStorage.getItem('rt_students');
-    const storedMap = new Map();
 
     if (storedStudents) {
         try {
-            const parsed = JSON.parse(storedStudents);
-            if (Array.isArray(parsed)) {
-                parsed.forEach(s => storedMap.set(s.IndexNumber, s));
-            }
+            localStudents = JSON.parse(storedStudents);
         } catch (e) {
-            console.warn('Failed to parse cached students:', e);
+            console.error('Failed to parse local students:', e);
         }
     }
 
-    state.students = MOCK_STUDENTS.map(s => {
-        const existing = storedMap.get(s.IndexNumber);
-        return {
-            ...s,
-            id: existing?.id,
-            AmountPaid: existing?.AmountPaid ?? 0,
-            AmountOwed: existing?.AmountOwed ?? 0,
-            Status: existing?.Status ?? 'Unpaid',
-            monthlyPayments: existing?.monthlyPayments || createEmptyMonthlyPayments()
-        };
+    const localIndexNumbers = new Set(localStudents.map(s => s.IndexNumber));
+
+    MOCK_STUDENTS.forEach(s => {
+        if (!localIndexNumbers.has(s.IndexNumber)) {
+            localStudents.push({
+                ...s,
+                AmountPaid: 0,
+                AmountOwed: 0,
+                Status: 'Unpaid',
+                event_id: null,
+                monthlyPayments: createEmptyMonthlyPayments()
+            });
+        }
     });
 
+    state.students = localStudents;
     normalizeStudentMonthlyPayments();
     saveToLocalStorage();
 }
@@ -1043,7 +1048,7 @@ async function loadStudentsFromDB() {
 
 async function loadEventsFromDB() {
     const data = await db.getAll('events');
-    if (data && !data.error) {
+    if (data && !data.error && Array.isArray(data) && data.length > 0) {
         state.events = data.map(e => {
             let actualColor = e.color || '';
             let extractedContribution = 0;
@@ -1063,12 +1068,12 @@ async function loadEventsFromDB() {
                 studentContribution: e.student_contribution || extractedContribution || 0
             };
         });
-    }
+    } else { state.events = []; }
 }
 
 async function loadExpensesFromDB() {
     const data = await db.getAll('expenses');
-    if (data && !data.error && Array.isArray(data)) {
+    if (data && !data.error && Array.isArray(data) && data.length > 0) {
         state.expenses = data.map(e => ({
             id: e.id,
             date: e.date,
@@ -1076,45 +1081,36 @@ async function loadExpensesFromDB() {
             amount: e.amount,
             description: e.description || ''
         }));
-    } else {
-        // Fallback to local storage if table doesn't exist or error
-        const storedExpenses = localStorage.getItem('rt_expenses');
-        state.expenses = storedExpenses ? JSON.parse(storedExpenses) : [];
-    }
+    } else { state.expenses = []; }
 }
 
 async function loadTransactionsFromDB() {
     const data = await db.getAll('transactions', { order: 'created_at.desc' });
-    if (data && !data.error && Array.isArray(data)) {
+    if (data && !data.error && Array.isArray(data) && data.length > 0) {
         state.transactions = data.map(mapTransactionRow);
-    }
+    } else { state.transactions = []; }
 }
 
 async function loadMediaFromDB() {
     const data = await db.getAll('media');
-    if (data && !data.error) {
+    if (data && !data.error && Array.isArray(data) && data.length > 0) {
         state.media = data;
-    }
+    } else { state.media = []; }
 }
 
 async function loadCommentsFromDB() {
     try {
         const { data, error } = await supabase.from('comments').select('*');
-        if (!error && data) {
+        if (!error && data && Array.isArray(data) && data.length > 0) {
             state.comments = data;
-        }
+        } else { state.comments = []; }
     } catch (err) {
-        console.warn('Supabase unavailable for loadCommentsFromDB.');
+        console.warn('Supabase unavailable for loadCommentsFromDB.'); state.comments = [];
     }
 }
 
 function saveToLocalStorage() {
-    localStorage.setItem('rt_students', JSON.stringify(state.students));
-    localStorage.setItem('rt_events', JSON.stringify(state.events));
-    localStorage.setItem('rt_transactions', JSON.stringify(state.transactions));
-    localStorage.setItem('rt_expenses', JSON.stringify(state.expenses));
-    localStorage.setItem('rt_media', JSON.stringify(state.media));
-    localStorage.setItem('rt_comments', JSON.stringify(state.comments));
+    // Removed as per request to only use DB
 }
 
 /* -------------------------------------------------------------
@@ -1444,10 +1440,7 @@ function switchView(viewName) {
 async function loadMedia() {
     if (useSupabase()) {
         await loadMediaFromDB();
-    } else {
-        const storedMedia = localStorage.getItem('rt_media');
-        state.media = storedMedia ? JSON.parse(storedMedia) : [];
-    }
+    } else { state.media = []; }
     saveToLocalStorage();
     renderMediaGrid();
 }
@@ -1589,10 +1582,7 @@ function renderMediaGrid() {
 async function loadComments() {
     if (useSupabase()) {
         await loadCommentsFromDB();
-    } else {
-        const storedComments = localStorage.getItem('rt_comments');
-        state.comments = storedComments ? JSON.parse(storedComments) : [];
-    }
+    } else { state.comments = []; }
     saveToLocalStorage();
     renderCommentFeed();
 }

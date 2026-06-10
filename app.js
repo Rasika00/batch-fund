@@ -2128,7 +2128,8 @@ function renderReportCharts() {
     document.getElementById('reportTopDept').innerText = 'Technology Faculty';
     document.getElementById('reportTopDeptStat').innerText = `Rs. ${totalCollected.toLocaleString()} collected`;
 
-    const totalStudents = state.students.length;
+    const uniqueStudentIndexes = new Set(state.students.map(s => s.IndexNumber));
+    const totalStudents = uniqueStudentIndexes.size;
     const avgContrib = totalStudents > 0 ? Math.round(totalCollected / totalStudents) : 0;
     document.getElementById('reportAvgContribution').innerText = `Rs. ${avgContrib.toLocaleString()}`;
 
@@ -2172,15 +2173,24 @@ window.renderMonthlyDashboardStats = function() {
     const yearSelect = document.getElementById('monthlyDashboardYearSelect');
     const selectedYear = yearSelect ? yearSelect.value : new Date().getFullYear().toString();
 
+    const uniqueStudents = [];
+    const seenIndexes = new Set();
+    state.students.forEach(s => {
+        if (!seenIndexes.has(s.IndexNumber)) {
+            seenIndexes.add(s.IndexNumber);
+            uniqueStudents.push(s);
+        }
+    });
+
     let totalCollectedThisYear = 0;
     let perfectContributors = 0;
     const monthlyTotals = {};
     MONTHS.forEach(m => monthlyTotals[m] = 0);
 
-    const participatingStudents = state.students.length || MOCK_STUDENTS.length;
+    const participatingStudents = uniqueStudents.length || MOCK_STUDENTS.length;
     const expectedTotal = participatingStudents * MONTHLY_FEE * 12;
 
-    state.students.forEach(student => {
+    uniqueStudents.forEach(student => {
         if (!student.monthlyPayments || !student.monthlyPayments[selectedYear]) return;
 
         let monthsPaidForYear = 0;
@@ -2262,9 +2272,18 @@ function renderMonthlyView() {
         headerRow.appendChild(th);
     });
 
+    const uniqueStudents = [];
+    const seenIndexes = new Set();
+    state.students.forEach(s => {
+        if (!seenIndexes.has(s.IndexNumber)) {
+            seenIndexes.add(s.IndexNumber);
+            uniqueStudents.push(s);
+        }
+    });
+
     // Filter students
     const search = document.getElementById('searchMonthlyInput')?.value.toLowerCase() || '';
-    const filtered = state.students.filter(s => 
+    const filtered = uniqueStudents.filter(s => 
         s.FullName.toLowerCase().includes(search) || 
         s.IndexNumber.toLowerCase().includes(search)
     );
